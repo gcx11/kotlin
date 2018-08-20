@@ -29,6 +29,10 @@ abstract class AbstractEnumValuesInlineTests : BorrowedInlineTest("enum/")
 
 abstract class AbstractInlineDefaultValuesTests : BorrowedInlineTest("defaultValues/")
 
+abstract class AbstractInlineSuspendTests : BorrowedInlineTest("suspend/")
+
+abstract class AbstractJsInlineContractsTests : BorrowedInlineTest("contracts/")
+
 abstract class AbstractBoxJsTest : BasicBoxTest(
         BasicBoxTest.TEST_DATA_DIR_PATH + "box/",
         "box/"
@@ -53,5 +57,3 @@ abstract class AbstractSourceMapGenerationSmokeTest : BasicBoxTest(
         generateSourceMap = true,
         generateNodeJsRunner = false
 )
-
-abstract class AbstractIrBoxJsTest : BasicIrBoxTest(BasicBoxTest.TEST_DATA_DIR_PATH + "box/", "irBox/")

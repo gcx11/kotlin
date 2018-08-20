@@ -17,7 +17,6 @@
 package org.jetbrains.kotlin.diagnostics.rendering
 
 import com.google.common.collect.Lists
-import com.google.common.collect.Sets
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
@@ -25,18 +24,19 @@ import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.cfg.WhenMissingCase
 import org.jetbrains.kotlin.cfg.hasUnknown
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.TypeAliasConstructorDescriptor
 import org.jetbrains.kotlin.diagnostics.rendering.TabledDescriptorRenderer.newTable
 import org.jetbrains.kotlin.diagnostics.rendering.TabledDescriptorRenderer.newText
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
-import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.resolve.MemberComparator
-import org.jetbrains.kotlin.resolve.MultiTargetPlatform
+import org.jetbrains.kotlin.renderer.DescriptorRenderer.Companion.DEBUG_TEXT
+import org.jetbrains.kotlin.renderer.PropertyAccessorRenderingPolicy
+import org.jetbrains.kotlin.resolve.*
+import org.jetbrains.kotlin.resolve.calls.callUtil.getType
 import org.jetbrains.kotlin.resolve.calls.inference.*
 import org.jetbrains.kotlin.resolve.calls.inference.TypeBounds.Bound
 import org.jetbrains.kotlin.resolve.calls.inference.TypeBounds.BoundKind.LOWER_BOUND
@@ -45,13 +45,14 @@ import org.jetbrains.kotlin.resolve.calls.inference.constraintPosition.Constrain
 import org.jetbrains.kotlin.resolve.calls.inference.constraintPosition.ConstraintPositionKind.*
 import org.jetbrains.kotlin.resolve.calls.inference.constraintPosition.getValidityConstraintForConstituentType
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
-import org.jetbrains.kotlin.resolve.getMultiTargetPlatform
+import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo
+import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactory
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.types.expressions.typeInfoFactory.noTypeInfo
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.lang.AssertionError
 
 object Renderers {
 
@@ -252,7 +253,7 @@ object Renderers {
         for (substitutedDescriptor in substitutedDescriptors) {
             val receiverType = DescriptorUtils.getReceiverParameterType(substitutedDescriptor.extensionReceiverParameter)
 
-            val errorPositions = Sets.newHashSet<ConstraintPosition>()
+            val errorPositions = hashSetOf<ConstraintPosition>()
             val parameterTypes = Lists.newArrayList<KotlinType>()
             for (valueParameterDescriptor in substitutedDescriptor.valueParameters) {
                 parameterTypes.add(valueParameterDescriptor.type)
@@ -490,7 +491,7 @@ object Renderers {
         val typeParameter = typeVariableWithCapturedConstraint.originalTypeParameter
         val upperBound = TypeIntersector.getUpperBoundsAsType(typeParameter)
 
-        assert(!KotlinBuiltIns.isNullableAny(upperBound) && capturedTypeConstructor.typeProjection.projectionKind == Variance.IN_VARIANCE) {
+        assert(!KotlinBuiltIns.isNullableAny(upperBound) && capturedTypeConstructor.projection.projectionKind == Variance.IN_VARIANCE) {
             "There is the only reason to report TYPE_INFERENCE_CANNOT_CAPTURE_TYPES"
         }
 
@@ -505,7 +506,7 @@ object Renderers {
             newText().normal(
                 typeParameter.name.wrapIntoQuotes() +
                         " cannot capture " +
-                        "${capturedTypeConstructor.typeProjection.toString().wrapIntoQuotes()}. " +
+                        "${capturedTypeConstructor.projection.toString().wrapIntoQuotes()}. " +
                         explanation
             )
         )
@@ -678,8 +679,20 @@ object Renderers {
     val DEPRECATION_RENDERER = DescriptorRenderer.ONLY_NAMES_WITH_SHORT_TYPES.withOptions {
         withoutTypeParameters = false
         receiverAfterName = false
-        renderAccessors = true
+        propertyAccessorRenderingPolicy = PropertyAccessorRenderingPolicy.PRETTY
     }.asRenderer()
+
+    fun renderExpressionType(type: KotlinType?, dataFlowTypes: Set<KotlinType>?): String {
+        if (type == null)
+            return "Type is unknown"
+
+        if (dataFlowTypes == null)
+            return DEBUG_TEXT.renderType(type)
+
+        val typesAsString = dataFlowTypes.map { DEBUG_TEXT.renderType(it) }.toMutableSet().apply { add(DEBUG_TEXT.renderType(type)) }
+
+        return typesAsString.sorted().joinToString(separator = " & ")
+    }
 }
 
 fun DescriptorRenderer.asRenderer() = SmartDescriptorRenderer(this)

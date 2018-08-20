@@ -18,6 +18,7 @@ sourceSets {
         kotlin {
             srcDir 'src'
             srcDir commonSrcDir
+            srcDir '../unsigned/src'
         }
     }
     test {
@@ -26,9 +27,9 @@ sourceSets {
             srcDir 'test'
         }
     }
-    unsigned {
+    coroutinesExperimental {
         kotlin {
-            srcDir '../unsigned/src'
+            srcDir '../coroutines-experimental/src'
         }
     }
 }
@@ -37,7 +38,7 @@ dependencies {
     testCompile project(":kotlin-test:kotlin-test-common")
     testCompile project(":kotlin-test:kotlin-test-annotations-common")
 
-    unsignedCompile sourceSets.main.output
+    coroutinesExperimentalCompile sourceSets.main.output
 }
 
 compileKotlinCommon {
@@ -50,30 +51,49 @@ compileKotlinCommon {
     kotlinOptions {
         freeCompilerArgs = [
                 "-module-name", project.name,
-                "-Xuse-experimental=kotlin.Experimental"
+                "-Xuse-experimental=kotlin.Experimental",
+                "-Xuse-experimental=kotlin.ExperimentalMultiplatform",
+                "-Xuse-experimental=kotlin.contracts.ExperimentalContracts",
+                "-XXLanguage:+InlineClasses",
+                "-Xallow-kotlin-package",
+                "-Xallow-result-return-type"
         ]
     }
 }
 
-compileUnsignedKotlinCommon {
+compileCoroutinesExperimentalKotlinCommon {
+    kotlinOptions {
+        languageVersion = "1.3"
+        apiVersion = "1.3"
+        freeCompilerArgs = [
+                "-module-name", project.name+"-coroutines",
+                "-Xuse-experimental=kotlin.contracts.ExperimentalContracts",
+                "-Xuse-experimental=kotlin.Experimental",
+                "-Xcoroutines=enable",
+                "-XXLanguage:-ReleaseCoroutines",
+                "-Xallow-kotlin-package",
+                "-Xallow-result-return-type"
+        ]
+    }
+}
+
+compileTestKotlinCommon {
     kotlinOptions {
         freeCompilerArgs += [
-                "-XXLanguage:+InlineClasses"
+                "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes"
         ]
     }
 }
-
-
-kotlin.experimental.coroutines 'enable'
 
 jar {
     manifestAttributes(manifest, project, 'Main')
+    from sourceSets.coroutinesExperimental.output
 }
-
 
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
     from sourceSets.main.kotlin
+    from sourceSets.coroutinesExperimental.kotlin
 }
 
 configurations {
@@ -83,16 +103,19 @@ configurations {
 artifacts {
     archives sourcesJar
     sources sourcesJar
-    archives javadocJar
 }
+
+javadocJar()
 
 // TODO: call the "dist" task instead, once we need to publish kotlin-stdlib-common.jar with the compiler distribution
 task distCommon(type: Copy) {
     from(jar)
+    from(sourcesJar)
     into "$distDir/common"
     rename "-${java.util.regex.Pattern.quote(version)}", ''
 }
 
 dist.dependsOn distCommon
+
 
 classes.setDependsOn(classes.dependsOn.findAll { it != "compileJava" })

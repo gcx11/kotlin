@@ -22,6 +22,7 @@ val NULLABLE_ANNOTATIONS = listOf(
     JvmAnnotationNames.JETBRAINS_NULLABLE_ANNOTATION,
     FqName("androidx.annotation.Nullable"),
     FqName("android.support.annotation.Nullable"),
+    FqName("android.annotation.Nullable"),
     FqName("com.android.annotations.Nullable"),
     FqName("org.eclipse.jdt.annotation.Nullable"),
     FqName("org.checkerframework.checker.nullness.qual.Nullable"),
@@ -41,6 +42,7 @@ val NOT_NULL_ANNOTATIONS = listOf(
     FqName("edu.umd.cs.findbugs.annotations.NonNull"),
     FqName("androidx.annotation.NonNull"),
     FqName("android.support.annotation.NonNull"),
+    FqName("android.annotation.NonNull"),
     FqName("com.android.annotations.NonNull"),
     FqName("org.eclipse.jdt.annotation.NonNull"),
     FqName("org.checkerframework.checker.nullness.qual.NonNull"),
@@ -48,13 +50,20 @@ val NOT_NULL_ANNOTATIONS = listOf(
     FqName("io.reactivex.annotations.NonNull")
 )
 
-val NULLABILITY_ANNOTATIONS = NULLABLE_ANNOTATIONS + JAVAX_NONNULL_ANNOTATION + NOT_NULL_ANNOTATIONS
-
 val COMPATQUAL_NULLABLE_ANNOTATION = FqName("org.checkerframework.checker.nullness.compatqual.NullableDecl")
 val COMPATQUAL_NONNULL_ANNOTATION = FqName("org.checkerframework.checker.nullness.compatqual.NonNullDecl")
 
 val ANDROIDX_RECENTLY_NULLABLE_ANNOTATION = FqName("androidx.annotation.RecentlyNullable")
 val ANDROIDX_RECENTLY_NON_NULL_ANNOTATION = FqName("androidx.annotation.RecentlyNonNull")
+
+val NULLABILITY_ANNOTATIONS: Set<FqName> = mutableSetOf<FqName>() +
+        NULLABLE_ANNOTATIONS +
+        JAVAX_NONNULL_ANNOTATION +
+        NOT_NULL_ANNOTATIONS +
+        COMPATQUAL_NULLABLE_ANNOTATION +
+        COMPATQUAL_NONNULL_ANNOTATION +
+        ANDROIDX_RECENTLY_NULLABLE_ANNOTATION +
+        ANDROIDX_RECENTLY_NON_NULL_ANNOTATION
 
 val READ_ONLY_ANNOTATIONS = listOf(
     JvmAnnotationNames.JETBRAINS_READONLY_ANNOTATION,

@@ -16,8 +16,7 @@
 
 package org.jetbrains.kotlin.gradle.internal
 
-import groovy.lang.Closure
-import org.gradle.util.Configurable
+import java.util.*
 
 enum class CacheImplementation(val optionName: String) {
     HASH_MAP("hashMap"),
@@ -25,23 +24,23 @@ enum class CacheImplementation(val optionName: String) {
     NONE("none")
 }
 
-open class AndroidExtensionsExtension : Configurable<AndroidExtensionsExtension> {
-    private lateinit var onEvaluatedHandler: (AndroidExtensionsExtension) -> Unit
+enum class AndroidExtensionsFeature(val featureName: String) {
+    VIEWS("views"),
+    PARCELIZE("parcelize");
 
-    fun setEvaluatedHandler(handler: (AndroidExtensionsExtension) -> Unit) {
-        onEvaluatedHandler = handler
+    internal companion object {
+        internal fun parseFeatures(features: Set<String>): SortedSet<AndroidExtensionsFeature> {
+            fun find(name: String) = AndroidExtensionsFeature.values().firstOrNull { it.featureName == name }
+                ?: error("Can't find Android Extensions feature $name")
+            return features.mapTo(sortedSetOf()) { find(it) }
+        }
     }
+}
 
+open class AndroidExtensionsExtension {
     open var isExperimental: Boolean = false
 
-    open var defaultCacheImplementation: CacheImplementation = CacheImplementation.HASH_MAP
+    open var features: Set<String> = AndroidExtensionsFeature.values().mapTo(mutableSetOf()) { it.featureName }
 
-    override fun configure(closure: Closure<*>): AndroidExtensionsExtension {
-        // ConfigureUtil is not used here to prevent infinite recursion
-        closure.resolveStrategy = Closure.DELEGATE_FIRST
-        closure.delegate = this
-        closure.call()
-        onEvaluatedHandler(this)
-        return this
-    }
+    open var defaultCacheImplementation: CacheImplementation = CacheImplementation.HASH_MAP
 }

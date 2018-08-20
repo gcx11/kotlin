@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.asJava.ImpreciseResolveResult.NO_MATCH
 import org.jetbrains.kotlin.asJava.ImpreciseResolveResult.UNSURE
 import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.asJava.toLightClass
+import org.jetbrains.kotlin.asJava.toPsiParameters
 import org.jetbrains.kotlin.compatibility.ExecutorProcessor
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.search.PsiBasedClassResolver
@@ -64,6 +65,13 @@ class KotlinAnnotatedElementsSearcher : QueryExecutor<PsiModifierListOwner, Anno
 
                     LightClassUtil.getLightClassPropertyMethods(declaration).all { consumer.process(it) }
                 }
+                is KtParameter -> {
+                    if (!declaration.toPsiParameters().all { consumer.process(it) }) return@processAnnotatedMembers false
+                    LightClassUtil.getLightClassBackingField(declaration)?.let {
+                        if (!consumer.process(it)) return@processAnnotatedMembers false
+                    }
+                    LightClassUtil.getLightClassPropertyMethods(declaration).all { consumer.process(it) }
+                }
                 else -> true
             }
         }
@@ -72,10 +80,12 @@ class KotlinAnnotatedElementsSearcher : QueryExecutor<PsiModifierListOwner, Anno
     companion object {
         private val LOG = Logger.getInstance("#com.intellij.psi.impl.search.AnnotatedMembersSearcher")
 
-        fun processAnnotatedMembers(annClass: PsiClass,
-                                    useScope: SearchScope,
-                                    preFilter: (KtAnnotationEntry) -> Boolean = { true },
-                                    consumer: (KtDeclaration) -> Boolean): Boolean {
+        fun processAnnotatedMembers(
+            annClass: PsiClass,
+            useScope: SearchScope,
+            preFilter: (KtAnnotationEntry) -> Boolean = { true },
+            consumer: (KtDeclaration) -> Boolean
+        ): Boolean {
             assert(annClass.isAnnotationType) { "Annotation type should be passed to annotated members search" }
 
             val psiBasedClassResolver = PsiBasedClassResolver.getInstance(annClass)

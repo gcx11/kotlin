@@ -17,7 +17,6 @@
 package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
@@ -37,10 +36,6 @@ class IrModuleFragmentImpl(
     override val name: Name get() = descriptor.name // TODO
 
     override val files: MutableList<IrFile> = ArrayList()
-
-    override val externalPackageFragments: MutableList<IrExternalPackageFragment> = ArrayList()
-
-    override val dependencyModules: MutableList<IrModuleFragment> = ArrayList()
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitModuleFragment(this, data)

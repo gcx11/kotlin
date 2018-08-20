@@ -1,9 +1,15 @@
 package org.jetbrains.uast.test.kotlin
 
+import com.intellij.openapi.util.Conditions
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import com.intellij.util.PairProcessor
+import com.intellij.util.ref.DebugReflectionUtil
+import junit.framework.TestCase
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.utils.addToStdlib.assertedCast
@@ -13,7 +19,8 @@ import org.jetbrains.uast.UFile
 import org.jetbrains.uast.kotlin.JvmDeclarationUElementPlaceholder
 import org.jetbrains.uast.kotlin.KOTLIN_CACHED_UELEMENT_KEY
 import org.jetbrains.uast.kotlin.KotlinUastLanguagePlugin
-import org.jetbrains.uast.test.common.RenderLogTestBase
+import org.jetbrains.uast.sourcePsiElement
+import org.jetbrains.uast.test.common.kotlin.RenderLogTestBase
 import org.jetbrains.uast.visitor.UastVisitor
 import org.junit.Assert
 import java.io.File
@@ -36,10 +43,18 @@ abstract class AbstractKotlinRenderLogTest : AbstractKotlinUastTest(), RenderLog
 
         file.checkContainingFileForAllElements()
         file.checkJvmDeclarationsImplementations()
+        file.checkDescriptorsLeak()
     }
 
     private fun checkParentConsistency(file: UFile) {
-        val parentMap = mutableMapOf<PsiElement, String>()
+        val parentMap = mutableMapOf<PsiElement, MutableMap<String, String>>()
+
+        operator fun MutableMap<PsiElement, MutableMap<String, String>>.get(psi: PsiElement, cls: String?) =
+            parentMap.getOrPut(psi) { mutableMapOf() }[cls]
+
+        operator fun MutableMap<PsiElement, MutableMap<String, String>>.set(psi: PsiElement, cls: String, v: String) {
+            parentMap.getOrPut(psi) { mutableMapOf() }[cls] = v
+        }
 
         file.accept(object : UastVisitor {
             private val parentStack = Stack<UElement>()
@@ -52,10 +67,8 @@ abstract class AbstractKotlinRenderLogTest : AbstractKotlinUastTest(), RenderLog
                 else {
                     Assert.assertEquals("Wrong parent of $node", parentStack.peek(), parent)
                 }
-                node.psi?.let {
-                    if (it !in parentMap) {
-                        parentMap[it] = parentStack.reversed().joinToString { it.asLogString() }
-                    }
+                node.sourcePsiElement?.let {
+                    parentMap[it, node.asLogString()] = parentStack.reversed().joinToString { it.asLogString() }
                 }
                 parentStack.push(node)
                 return false
@@ -72,7 +85,7 @@ abstract class AbstractKotlinRenderLogTest : AbstractKotlinUastTest(), RenderLog
         file.psi.accept(object : PsiRecursiveElementVisitor() {
             override fun visitElement(element: PsiElement) {
                 val uElement = KotlinUastLanguagePlugin().convertElementWithParent(element, null)
-                val expectedParents = parentMap[element]
+                val expectedParents = parentMap[element, uElement?.asLogString()]
                 if (expectedParents != null) {
                     assertNotNull("Expected to be able to convert PSI element $element", uElement)
                     val parents = generateSequence(uElement!!.uastParent) { it.uastParent }.joinToString { it.asLogString() }
@@ -95,6 +108,15 @@ abstract class AbstractKotlinRenderLogTest : AbstractKotlinUastTest(), RenderLog
                     anchorPsi.containingFile.assertedCast<KtFile> { "uastAnchor.containingFile should be KtFile for ${node.asLogString()}" }
                 }
 
+                return false
+            }
+        })
+    }
+
+    private fun UFile.checkDescriptorsLeak() {
+        accept(object : UastVisitor {
+            override fun visitElement(node: UElement): Boolean {
+                checkDescriptorsLeak(node)
                 return false
             }
         })
@@ -124,6 +146,22 @@ abstract class AbstractKotlinRenderLogTest : AbstractKotlinUastTest(), RenderLog
             }
         })
     }
+}
+
+private val descriptorsClasses = listOf(AnnotationDescriptor::class, DeclarationDescriptor::class)
+
+fun checkDescriptorsLeak(node: UElement) {
+    DebugReflectionUtil.walkObjects(
+        10,
+        mapOf(node to node.javaClass.name),
+        Any::class.java,
+        Conditions.alwaysTrue(),
+        PairProcessor { value, backLink ->
+            descriptorsClasses.find { it.isInstance(value) }?.let {
+                TestCase.fail("""Leaked descriptor ${it.qualifiedName} in ${node.javaClass.name}\n$backLink""")
+                false
+            } ?: true
+        })
 }
 
 private fun PsiFile.clearUastCaches() {

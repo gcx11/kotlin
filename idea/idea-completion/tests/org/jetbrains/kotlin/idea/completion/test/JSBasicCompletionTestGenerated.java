@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -2110,6 +2110,11 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
                 KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/idea-completion/testData/basic/common/shadowing"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
             }
 
+            @TestMetadata("ExtensionShadows.kt")
+            public void testExtensionShadows() throws Exception {
+                runTest("idea/idea-completion/testData/basic/common/shadowing/ExtensionShadows.kt");
+            }
+
             @TestMetadata("InInitializer1.kt")
             public void testInInitializer1() throws Exception {
                 runTest("idea/idea-completion/testData/basic/common/shadowing/InInitializer1.kt");
@@ -2200,6 +2205,11 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
                 runTest("idea/idea-completion/testData/basic/common/shadowing/PreferMoreSpecificExtensionGeneric.kt");
             }
 
+            @TestMetadata("PreferMoreSpecificExtensionGenericWithMultipleParam.kt")
+            public void testPreferMoreSpecificExtensionGenericWithMultipleParam() throws Exception {
+                runTest("idea/idea-completion/testData/basic/common/shadowing/PreferMoreSpecificExtensionGenericWithMultipleParam.kt");
+            }
+
             @TestMetadata("PreferMoreSpecificExtensionGenericWithParam.kt")
             public void testPreferMoreSpecificExtensionGenericWithParam() throws Exception {
                 runTest("idea/idea-completion/testData/basic/common/shadowing/PreferMoreSpecificExtensionGenericWithParam.kt");
@@ -2216,6 +2226,11 @@ public class JSBasicCompletionTestGenerated extends AbstractJSBasicCompletionTes
 
             public void testAllFilesPresentInSmartCast() throws Exception {
                 KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/idea-completion/testData/basic/common/smartCast"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+            }
+
+            @TestMetadata("functionWithContract.kt")
+            public void testFunctionWithContract() throws Exception {
+                runTest("idea/idea-completion/testData/basic/common/smartCast/functionWithContract.kt");
             }
 
             @TestMetadata("MemberExtensionAfterThisSmartCast.kt")

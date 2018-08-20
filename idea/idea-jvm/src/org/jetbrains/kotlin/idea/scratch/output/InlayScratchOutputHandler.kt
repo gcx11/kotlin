@@ -38,12 +38,12 @@ object InlayScratchOutputHandler : ScratchOutputHandler {
         createInlay(file, expression, output)
 
         if (output.type == ScratchOutputType.ERROR) {
-            ToolWindowScratchOutputHandler.handle(file, expression, output)
+            getToolwindowHandler().handle(file, expression, output)
         }
     }
 
     override fun error(file: ScratchFile, message: String) {
-        ToolWindowScratchOutputHandler.error(file, message)
+        getToolwindowHandler().error(file, message)
     }
 
     override fun onFinish(file: ScratchFile) {
@@ -52,7 +52,7 @@ object InlayScratchOutputHandler : ScratchOutputHandler {
 
     override fun clear(file: ScratchFile) {
         clearInlays(file.editor)
-        ToolWindowScratchOutputHandler.clear(file)
+        getToolwindowHandler().clear(file)
     }
 
     private fun createInlay(file: ScratchFile, expression: ScratchExpression, output: ScratchOutput) {
@@ -69,11 +69,16 @@ object InlayScratchOutputHandler : ScratchOutputHandler {
 
             fun addInlay(text: String) {
                 val textBeforeNewLine = if (StringUtil.containsLineBreak(text)) text.substringBefore("\n") + "..." else text
-                val shortText = StringUtil.shortenTextWithEllipsis(textBeforeNewLine, maxLineLength - spaceCount - lineLength, 0)
+                val maxInlayLength = (maxLineLength - spaceCount - lineLength).takeIf { it > 5 } ?: 5
+                val shortText = StringUtil.shortenTextWithEllipsis(textBeforeNewLine, maxInlayLength, 0)
                 if (shortText != text) {
                     printToToolWindow(file, expression, output)
                 }
-                editor.inlayModel.addInlineElement(lineEndOffset, InlayScratchFileRenderer(" ".repeat(spaceCount) + shortText, output.type))
+                editor.inlayModel.addInlineElement(
+                    lineEndOffset,
+                    true,
+                    InlayScratchFileRenderer(" ".repeat(spaceCount) + shortText, output.type)
+                )
             }
 
             val existing = editor.inlayModel
@@ -90,7 +95,7 @@ object InlayScratchOutputHandler : ScratchOutputHandler {
 
     private fun printToToolWindow(file: ScratchFile, expression: ScratchExpression, output: ScratchOutput) {
         if (output.type != ScratchOutputType.ERROR) {
-            ToolWindowScratchOutputHandler.handle(file, expression, output)
+            getToolwindowHandler().handle(file, expression, output)
         }
     }
 

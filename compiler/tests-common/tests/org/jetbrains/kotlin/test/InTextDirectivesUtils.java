@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.test;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.ArrayUtil;
@@ -134,7 +133,7 @@ public final class InTextDirectivesUtils {
     }
 
     public static void assertHasUnknownPrefixes(String fileText, Collection<String> knownPrefixes) {
-        Set<String> prefixes = Sets.newHashSet();
+        Set<String> prefixes = new HashSet<>();
 
         for (String line : fileNonEmptyCommentedLines(fileText)) {
             String prefix = probableDirective(line);
@@ -221,6 +220,10 @@ public final class InTextDirectivesUtils {
 
     public static boolean isCompatibleTarget(TargetBackend targetBackend, File file) {
         if (targetBackend == TargetBackend.ANY) return true;
+
+        List<String> doNotTarget = findLinesWithPrefixesRemoved(textWithDirectives(file), "// DONT_TARGET_EXACT_BACKEND: ");
+        if (doNotTarget.contains(targetBackend.name()))
+            return false;
 
         List<String> backends = findLinesWithPrefixesRemoved(textWithDirectives(file), "// TARGET_BACKEND: ");
         return backends.isEmpty() || backends.contains(targetBackend.name()) || backends.contains(targetBackend.getCompatibleWith().name());

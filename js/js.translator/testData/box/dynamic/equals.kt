@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1157
+// EXPECTED_REACHABLE_NODES: 1324
 package foo
 
 object f {
@@ -8,7 +7,7 @@ object f {
     override fun equals(other: Any?): Boolean {
         equalsCalled++
         if (equalsCalled > 1) return false
-        return super.equals(other)
+        return this === other
     }
 }
 

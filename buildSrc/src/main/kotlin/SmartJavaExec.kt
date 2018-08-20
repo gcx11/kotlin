@@ -15,6 +15,7 @@ fun Project.smartJavaExec(configure: JavaExec.() -> Unit) = task<JavaExec> javaE
         val classpath = classpath
         val main = main
         dependsOn(classpath)
+        inputs.files(classpath)
         inputs.property("main", main)
         doFirst {
             val classPathString = classpath.joinToString(" ") { project.file(it).toURI().toString() }
@@ -39,7 +40,7 @@ fun Project.smartJavaExec(configure: JavaExec.() -> Unit) = task<JavaExec> javaE
         main = "-jar"
 
         classpath = project.files()
-        val copyArgs = mutableListOf<Any?>().also { it.addAll(args) }
+        val copyArgs = args.orEmpty().toList()
         args(jarTask.outputs.files.singleFile)
         args(copyArgs)
 

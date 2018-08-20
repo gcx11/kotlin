@@ -27,6 +27,7 @@ import com.intellij.psi.search.searches.ClassInheritorsSearch
 import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.isFunctionType
+import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.idea.caches.resolve.util.resolveToDescriptor
@@ -39,11 +40,11 @@ import org.jetbrains.kotlin.idea.core.KotlinIndicesHelper
 import org.jetbrains.kotlin.idea.core.Tail
 import org.jetbrains.kotlin.idea.core.multipleFuzzyTypes
 import org.jetbrains.kotlin.idea.core.overrideImplement.ImplementMembersHandler
+import org.jetbrains.kotlin.idea.formatter.ktCodeStyleSettings
 import org.jetbrains.kotlin.idea.resolve.ResolutionFacade
 import org.jetbrains.kotlin.idea.util.*
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.load.java.sam.SamConstructorDescriptor
-import org.jetbrains.kotlin.platform.JavaToKotlinClassMap
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -185,13 +186,16 @@ class TypeInstantiationItems(
 
             val constructorParenthesis = if (classifier.kind != ClassKind.INTERFACE) "()" else ""
             itemText += constructorParenthesis
-            itemText = "object: $itemText{...}"
+            itemText = "object : $itemText{...}"
             lookupString = "object"
             allLookupStrings = setOf(lookupString, lookupElement.lookupString)
             insertHandler = InsertHandler<LookupElement> { context, _ ->
                 val startOffset = context.startOffset
 
-                val text1 = "object: $typeText"
+                val settings = ktCodeStyleSettings(context.project)?.custom
+                val spaceBefore = if (settings?.SPACE_BEFORE_EXTEND_COLON == true) " " else ""
+                val spaceAfter = if (settings?.SPACE_AFTER_EXTEND_COLON == true) " " else ""
+                val text1 = "object$spaceBefore:$spaceAfter$typeText"
                 val text2 = "$constructorParenthesis {}"
                 val text = if (allTypeArgsKnown)
                     text1 + IdeDescriptorRenderers.SOURCE_CODE.renderTypeArguments(typeArgsToUse) + text2

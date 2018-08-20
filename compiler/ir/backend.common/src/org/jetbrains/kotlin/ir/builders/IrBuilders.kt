@@ -16,39 +16,69 @@
 
 package org.jetbrains.kotlin.ir.builders
 
-import org.jetbrains.kotlin.backend.common.descriptors.substitute
-import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedVariableDescriptor
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.impl.IrVariableImpl
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrLoop
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.ir.symbols.impl.IrVariableSymbolImpl
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
+import org.jetbrains.kotlin.name.Name
 
 fun IrBuilderWithScope.irWhile(origin: IrStatementOrigin? = null) =
-        IrWhileLoopImpl(startOffset, endOffset, context.builtIns.unitType, origin)
+    IrWhileLoopImpl(startOffset, endOffset, context.irBuiltIns.unitType, origin)
 
 fun IrBuilderWithScope.irBreak(loop: IrLoop) =
-        IrBreakImpl(startOffset, endOffset, context.builtIns.nothingType, loop)
+    IrBreakImpl(startOffset, endOffset, context.irBuiltIns.nothingType, loop)
 
 fun IrBuilderWithScope.irContinue(loop: IrLoop) =
-        IrContinueImpl(startOffset, endOffset, context.builtIns.nothingType, loop)
-
-fun IrBuilderWithScope.irTrue() = IrConstImpl.boolean(startOffset, endOffset, context.builtIns.booleanType, true)
-
-fun IrBuilderWithScope.irFalse() = IrConstImpl.boolean(startOffset, endOffset, context.builtIns.booleanType, false)
-
-fun IrBuilderWithScope.irCall(symbol: IrFunctionSymbol, typeArguments: Map<TypeParameterDescriptor, KotlinType>) =
-        IrCallImpl(this.startOffset, this.endOffset, symbol, symbol.descriptor.substitute(typeArguments), typeArguments)
-
-fun IrBuilderWithScope.irCall(symbol: IrFunctionSymbol, typeArguments: List<KotlinType>) =
-    irCall(symbol, symbol.descriptor.typeParameters.zip(typeArguments).toMap())
+    IrContinueImpl(startOffset, endOffset, context.irBuiltIns.nothingType, loop)
 
 fun IrBuilderWithScope.irGetObject(classSymbol: IrClassSymbol) =
-        IrGetObjectValueImpl(startOffset, endOffset, classSymbol.owner.defaultType, classSymbol)
+    IrGetObjectValueImpl(startOffset, endOffset, IrSimpleTypeImpl(classSymbol, false, emptyList(), emptyList()), classSymbol)
 
-fun IrBuilderWithScope.irGetField(receiver: IrExpression?, symbol: IrFieldSymbol) =
-        IrGetFieldImpl(startOffset, endOffset, symbol, receiver)
+// Also adds created variable into building block
+fun <T : IrElement> IrStatementsBuilder<T>.createTmpVariable(
+    irExpression: IrExpression,
+    nameHint: String? = null,
+    isMutable: Boolean = false,
+    origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
+    irType: IrType? = null
+): IrVariable {
+    val variable = scope.createTmpVariable(irExpression, nameHint, isMutable, origin, irType)
+    +variable
+    return variable
+}
+
+fun Scope.createTmpVariable(
+    irExpression: IrExpression,
+    nameHint: String? = null,
+    isMutable: Boolean = false,
+    origin: IrDeclarationOrigin = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
+    irType: IrType? = null
+): IrVariable {
+    val varType = irType ?: irExpression.type
+    val descriptor = WrappedVariableDescriptor()
+    val symbol = IrVariableSymbolImpl(descriptor)
+    return IrVariableImpl(
+        irExpression.startOffset,
+        irExpression.endOffset,
+        origin,
+        symbol,
+        Name.identifier(nameHint ?: "tmp"),
+        varType,
+        isMutable,
+        false,
+        false
+    ).apply {
+        initializer = irExpression
+        parent = getLocalDeclarationParent()
+        descriptor.bind(this)
+    }
+}

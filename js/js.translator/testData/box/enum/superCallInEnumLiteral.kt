@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1150
+// EXPECTED_REACHABLE_NODES: 1307
 package foo
 
 fun box() = E.E1.f() + E.E2.f()

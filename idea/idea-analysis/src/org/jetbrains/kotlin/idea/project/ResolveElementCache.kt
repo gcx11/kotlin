@@ -31,8 +31,6 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.frontend.di.createContainerForBodyResolve
 import org.jetbrains.kotlin.idea.caches.resolve.CodeFragmentAnalyzer
-import org.jetbrains.kotlin.idea.stubindex.KotlinProbablyNothingFunctionShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinProbablyNothingPropertyShortNameIndex
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
@@ -43,7 +41,6 @@ import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo
 import org.jetbrains.kotlin.resolve.lazy.*
 import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyClassDescriptor
-import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyScriptDescriptor
 import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import java.util.*
 
@@ -179,16 +176,23 @@ class ResolveElementCache(
 
                 val (bindingContext, statementFilter) = performElementAdditionalResolve(resolveElement, contextElements, bodyResolveMode)
 
-                if (statementFilter == StatementFilter.NONE) { // partial resolve is not supported for the given declaration - full resolve performed instead
+                if (statementFilter == StatementFilter.NONE &&
+                    bodyResolveMode.doControlFlowAnalysis && !bodyResolveMode.bindingTraceFilter.ignoreDiagnostics
+                ) {
+                    // Without statement filter, we analyze everything, so we can count partial resolve result as full resolve
+                    // But we can do this only if our resolve mode also provides *both* CFA and diagnostics
+                    // This is true only for PARTIAL_WITH_DIAGNOSTICS resolve mode
                     fullResolveMap[resolveElement] = CachedFullResolve(bindingContext, resolveElement)
                     return bindingContext
                 }
 
                 val resolveToCache = CachedPartialResolve(bindingContext, file, bodyResolveMode)
 
-                for (statement in (statementFilter as PartialBodyResolveFilter).allStatementsToResolve) {
-                    if (bindingContext[BindingContext.PROCESSED, statement] == true) {
-                        partialResolveMap.putIfAbsent(statement, resolveToCache)
+                if (statementFilter is PartialBodyResolveFilter) {
+                    for (statement in statementFilter.allStatementsToResolve) {
+                        if (bindingContext[BindingContext.PROCESSED, statement] == true) {
+                            partialResolveMap.putIfAbsent(statement, resolveToCache)
+                        }
                     }
                 }
 
@@ -251,7 +255,8 @@ class ResolveElementCache(
             KtTypeConstraint::class.java,
             KtPackageDirective::class.java,
             KtCodeFragment::class.java,
-            KtTypeAlias::class.java
+            KtTypeAlias::class.java,
+            KtDestructuringDeclaration::class.java
         ) as KtElement?
 
         when (elementOfAdditionalResolve) {
@@ -309,6 +314,12 @@ class ResolveElementCache(
         }
 
         val trace: BindingTrace = when (resolveElement) {
+            is KtDestructuringDeclaration -> destructuringDeclarationAdditionalResolve(
+                resolveSession,
+                resolveElement,
+                bodyResolveMode.bindingTraceFilter
+            )
+
             is KtNamedFunction -> functionAdditionalResolve(
                 resolveSession,
                 resolveElement,
@@ -366,7 +377,7 @@ class ResolveElementCache(
 
             is KtImportList -> {
                 val resolver = resolveSession.fileScopeProvider.getImportResolver(resolveElement.getContainingKtFile())
-                resolver.forceResolveAllImports()
+                resolver.forceResolveNonDefaultImports()
                 resolveSession.trace
             }
 
@@ -446,15 +457,12 @@ class ResolveElementCache(
     }
 
     private fun codeFragmentAdditionalResolve(codeFragment: KtCodeFragment, bodyResolveMode: BodyResolveMode): BindingTrace {
-        val trace = createDelegatingTrace(codeFragment, bodyResolveMode.bindingTraceFilter)
-
         val contextResolveMode = if (bodyResolveMode == BodyResolveMode.PARTIAL)
             BodyResolveMode.PARTIAL_FOR_COMPLETION
         else
             bodyResolveMode
-        codeFragmentAnalyzer.analyzeCodeFragment(codeFragment, trace, contextResolveMode)
 
-        return trace
+        return codeFragmentAnalyzer.analyzeCodeFragment(codeFragment, contextResolveMode)
     }
 
     private fun annotationAdditionalResolve(resolveSession: ResolveSession, ktAnnotationEntry: KtAnnotationEntry): BindingTrace {
@@ -530,6 +538,21 @@ class ResolveElementCache(
         return trace
     }
 
+
+    private fun destructuringDeclarationAdditionalResolve(
+        resolveSession: ResolveSession,
+        declaration: KtDestructuringDeclaration,
+        bindingTraceFilter: BindingTraceFilter
+    ): BindingTrace {
+        for (entry in declaration.entries) {
+            val descriptor = resolveSession.resolveToDescriptor(entry) as PropertyDescriptor
+            ForceResolveUtil.forceResolveAllContents(descriptor)
+            forceResolveAnnotationsInside(entry)
+        }
+
+        return createDelegatingTrace(declaration, bindingTraceFilter)
+    }
+
     private fun propertyAdditionalResolve(
         resolveSession: ResolveSession, property: KtProperty,
         file: KtFile,
@@ -542,12 +565,12 @@ class ResolveElementCache(
         val descriptor = resolveSession.resolveToDescriptor(property) as PropertyDescriptor
         ForceResolveUtil.forceResolveAllContents(descriptor)
 
-        val bodyResolveContext = BodyResolveContextForLazy(TopDownAnalysisMode.LocalDeclarations, { declaration ->
+        val bodyResolveContext = BodyResolveContextForLazy(TopDownAnalysisMode.LocalDeclarations) { declaration ->
             assert(declaration.parent == property || declaration == property) {
                 "Must be called only for property accessors or for property, but called for $declaration"
             }
             resolveSession.declarationScopeProvider.getResolutionScopeForDeclaration(declaration)
-        })
+        }
 
         bodyResolver.resolveProperty(bodyResolveContext, property, descriptor)
 
@@ -696,7 +719,7 @@ class ResolveElementCache(
             statementFilter,
             file.jvmTarget,
             file.languageVersionSettings
-        ).get<BodyResolver>()
+        ).get()
     }
 
     // All additional resolve should be done to separate trace
@@ -734,7 +757,7 @@ class ResolveElementCache(
 
         override fun getDeclaringScope(declaration: KtDeclaration): LexicalScope? = declaringScopes(declaration)
 
-        override fun getScripts(): MutableMap<KtScript, LazyScriptDescriptor> = hashMapOf()
+        override fun getScripts(): MutableMap<KtScript, ClassDescriptorWithResolutionScopes> = hashMapOf()
 
         override fun getOuterDataFlowInfo(): DataFlowInfo = DataFlowInfo.EMPTY
 

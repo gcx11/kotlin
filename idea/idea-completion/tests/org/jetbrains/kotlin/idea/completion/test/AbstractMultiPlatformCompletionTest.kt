@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -22,7 +22,7 @@ import java.io.File
 abstract class AbstractMultiPlatformCompletionTest : AbstractMultiModuleTest() {
     protected fun doTest(testPath: String) {
         setupMppProjectFromDirStructure(File(testPath))
-        val file = project.findFileWithCaret()
+        val file = project.findFileWithCaret() as KtFile
         val doc = PsiDocumentManager.getInstance(myProject).getDocument(file)!!
         val offset = doc.extractMarkerOffset(project)
         val editor = EditorFactory.getInstance().createEditor(doc, myProject)!!

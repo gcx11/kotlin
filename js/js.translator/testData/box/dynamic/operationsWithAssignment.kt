@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1118
+// EXPECTED_REACHABLE_NODES: 1288
 package foo
 
 fun box(): String {
@@ -22,6 +21,8 @@ fun box(): String {
     assertEquals(9.79999999999999, b)
     c += a * 3 + b / n
     assertEquals("text1318.233333333333334", c)
+    a = 14
+    assertEquals(14, a)
 
     return "OK"
 }

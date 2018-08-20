@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1121
+// EXPECTED_REACHABLE_NODES: 1291
 package foo
 
 open class Base(a: Int, b: Int = 3) {

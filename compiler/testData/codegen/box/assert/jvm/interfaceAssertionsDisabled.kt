@@ -1,6 +1,9 @@
-// IGNORE_BACKEND: JS
+// IGNORE_BACKEND: JVM_IR
+// TARGET_BACKEND: JVM
 // KOTLIN_CONFIGURATION_FLAGS: ASSERTIONS_MODE=jvm
 // WITH_RUNTIME
+
+package interfaceAssertionsDisabled
 
 interface Checker {
     fun checkTrue(): Boolean {
@@ -38,9 +41,8 @@ class Dummy
 
 fun disableAssertions(): Checker {
     val loader = Dummy::class.java.classLoader
-    loader.setDefaultAssertionStatus(false)
-    val c = loader.loadClass("ShouldBeDisabled")
-    return c.newInstance() as Checker
+    loader.setPackageAssertionStatus("interfaceAssertionsDisabled", false)
+    return loader.loadClass("interfaceAssertionsDisabled.ShouldBeDisabled").newInstance() as Checker
 }
 
 fun box(): String {
@@ -49,6 +51,5 @@ fun box(): String {
     if (c.checkTrueWithMessage()) return "FAIL 1"
     if (c.checkFalse()) return "FAIL 2"
     if (c.checkFalseWithMessage()) return "FAIL 3"
-
     return "OK"
 }

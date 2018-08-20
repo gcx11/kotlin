@@ -23,18 +23,22 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.diagnostics.Diagnostic
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.Errors
-import org.jetbrains.kotlin.lexer.KtToken
+import org.jetbrains.kotlin.idea.quickfix.createFromUsage.createCallable.CreatePropertyDelegateAccessorsActionFactory
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
+import org.jetbrains.kotlin.util.OperatorNameConventions
 
 class ChangeVariableMutabilityFix(
     element: KtValVarKeywordOwner,
-    private val makeVar: Boolean
+    private val makeVar: Boolean,
+    private val actionText: String? = null,
+    private val deleteInitializer: Boolean = false
 ) : KotlinQuickFixAction<KtValVarKeywordOwner>(element) {
 
-    override fun getText() = if (makeVar) "Make variable mutable" else "Make variable immutable"
+    override fun getText() = actionText
+        ?: (if (makeVar) "Change to var" else "Change to val") + (if (deleteInitializer) " and delete initializer" else "")
 
     override fun getFamilyName(): String = text
 
@@ -49,6 +53,9 @@ class ChangeVariableMutabilityFix(
         val factory = KtPsiFactory(project)
         val newKeyword = if (makeVar) factory.createVarKeyword() else factory.createValKeyword()
         element.valOrVarKeyword!!.replace(newKeyword)
+        if (deleteInitializer) {
+            (element as? KtProperty)?.initializer = null
+        }
     }
 
     companion object {
@@ -106,6 +113,16 @@ class ChangeVariableMutabilityFix(
                 if (modifier != KtTokens.CONST_KEYWORD) return null
                 val property = element.getStrictParentOfType<KtProperty>() ?: return null
                 return ChangeVariableMutabilityFix(property, makeVar = false)
+            }
+        }
+
+        val DELEGATED_PROPERTY_VAL_FACTORY = object : KotlinSingleIntentionActionFactory() {
+            override fun createAction(diagnostic: Diagnostic): IntentionAction? {
+                val element = Errors.DELEGATE_SPECIAL_FUNCTION_MISSING.cast(diagnostic).psiElement
+                val property = element.getStrictParentOfType<KtProperty>() ?: return null
+                val info = CreatePropertyDelegateAccessorsActionFactory.extractFixData(property, diagnostic).singleOrNull() ?: return null
+                if (info.name != OperatorNameConventions.SET_VALUE.asString()) return null
+                return ChangeVariableMutabilityFix(property, makeVar = false, actionText = "Change to val")
             }
         }
     }

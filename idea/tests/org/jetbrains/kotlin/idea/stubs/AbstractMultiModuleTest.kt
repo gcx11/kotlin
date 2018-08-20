@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -21,16 +21,17 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
+import com.intellij.psi.PsiFile
 import com.intellij.testFramework.PsiTestUtil
 import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.config.KotlinFacetSettingsProvider
-import org.jetbrains.kotlin.config.TargetPlatformKind
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.idea.facet.getOrCreateFacet
 import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
 import org.jetbrains.kotlin.idea.test.ConfigLibraryUtil
 import org.jetbrains.kotlin.idea.test.KotlinJdkAndLibraryProjectDescriptor
 import org.jetbrains.kotlin.idea.test.PluginTestCaseBase
-import org.jetbrains.kotlin.idea.test.allKotlinFiles
+import org.jetbrains.kotlin.platform.IdePlatform
 import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.jetbrains.kotlin.test.TestJdkKind
 import org.junit.Assert
@@ -59,6 +60,11 @@ abstract class AbstractMultiModuleTest : DaemonAnalyzerTestCase() {
         ConfigLibraryUtil.configureSdk(moduleWithSrcRootSet, PluginTestCaseBase.addJdk(testRootDisposable) { PluginTestCaseBase.jdk(jdk) })
 
         return moduleWithSrcRootSet
+    }
+
+    override fun tearDown() {
+        VfsRootAccess.disallowRootAccess(KotlinTestUtils.getHomeDirectory())
+        super.tearDown()
     }
 
     public override fun createModule(path: String, moduleType: ModuleType<*>): Module {
@@ -103,23 +109,31 @@ abstract class AbstractMultiModuleTest : DaemonAnalyzerTestCase() {
         }
     }
 
-    protected fun checkFiles(shouldCheckFile: () -> Boolean = { true }, check: () -> Unit) {
+    fun Module.enableCoroutines() {
+        createFacet()
+        val facetSettings = KotlinFacetSettingsProvider.getInstance(project).getInitializedSettings(this)
+        facetSettings.useProjectSettings = false
+        facetSettings.coroutineSupport = LanguageFeature.State.ENABLED
+    }
+
+    protected fun checkFiles(
+        findFiles: () -> List<PsiFile>,
+        check: () -> Unit
+    ) {
         var atLeastOneFile = false
-        myProject.allKotlinFiles().forEach { file ->
+        findFiles().forEach { file ->
             configureByExistingFile(file.virtualFile!!)
-            if (shouldCheckFile()) {
-                atLeastOneFile = true
-                check()
-            }
+            atLeastOneFile = true
+            check()
         }
         Assert.assertTrue(atLeastOneFile)
     }
 }
 
 fun Module.createFacet(
-        platformKind: TargetPlatformKind<*>? = null,
-        useProjectSettings: Boolean = true,
-        implementedModuleName: String? = null
+    platformKind: IdePlatform<*, *>? = null,
+    useProjectSettings: Boolean = true,
+    implementedModuleName: String? = null
 ) {
     WriteAction.run<Throwable> {
         val modelsProvider = IdeModifiableModelsProviderImpl(project)

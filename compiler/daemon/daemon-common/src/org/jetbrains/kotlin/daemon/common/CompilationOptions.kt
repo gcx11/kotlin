@@ -46,27 +46,26 @@ open class CompilationOptions(
 }
 
 class IncrementalCompilationOptions(
-        val areFileChangesKnown: Boolean,
-        val modifiedFiles: List<File>?,
-        val deletedFiles: List<File>?,
-        val workingDir: File,
-        val customCacheVersionFileName: String,
-        val customCacheVersion: Int,
-        compilerMode: CompilerMode,
-        targetPlatform: CompileService.TargetPlatform,
-        /** @See [ReportCategory] */
+    val areFileChangesKnown: Boolean,
+    val modifiedFiles: List<File>?,
+    val deletedFiles: List<File>?,
+    val workingDir: File,
+    compilerMode: CompilerMode,
+    targetPlatform: CompileService.TargetPlatform,
+    /** @See [ReportCategory] */
         reportCategories: Array<Int>,
-        /** @See [ReportSeverity] */
+    /** @See [ReportSeverity] */
         reportSeverity: Int,
-        /** @See [CompilationResultCategory]] */
+    /** @See [CompilationResultCategory]] */
         requestedCompilationResults: Array<Int>,
-        val usePreciseJavaTracking: Boolean,
-        /**
+    val usePreciseJavaTracking: Boolean,
+    /**
          * Directories that should be cleared when IC decides to rebuild
          */
-        val localStateDirs: List<File>,
-        val multiModuleICSettings: MultiModuleICSettings,
-        val modulesInfo: IncrementalModuleInfo
+        val outputFiles: List<File>,
+    val multiModuleICSettings: MultiModuleICSettings,
+    val modulesInfo: IncrementalModuleInfo,
+    val classpathFqNamesHistory: File? = null
 ) : CompilationOptions(compilerMode, targetPlatform, reportCategories, reportSeverity, requestedCompilationResults) {
     companion object {
         const val serialVersionUID: Long = 0
@@ -79,11 +78,10 @@ class IncrementalCompilationOptions(
                "modifiedFiles=$modifiedFiles, " +
                "deletedFiles=$deletedFiles, " +
                "workingDir=$workingDir, " +
-               "customCacheVersionFileName='$customCacheVersionFileName', " +
-               "customCacheVersion=$customCacheVersion, " +
                "multiModuleICSettings=$multiModuleICSettings, " +
                "usePreciseJavaTracking=$usePreciseJavaTracking" +
-               "localStateDirs=$localStateDirs" +
+               "outputFiles=$outputFiles" +
+               "classpathFqNamesHistory=$classpathFqNamesHistory" +
                ")"
     }
 }

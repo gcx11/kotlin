@@ -7,13 +7,11 @@ package org.jetbrains.kotlin.ir.declarations
 
 import org.jetbrains.kotlin.descriptors.ValueDescriptor
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
-import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.ir.types.IrType
 
-interface IrValueDeclaration : IrDeclaration, IrSymbolOwner {
+interface IrValueDeclaration : IrDeclarationWithName, IrSymbolOwner {
     override val descriptor: ValueDescriptor
     override val symbol: IrValueSymbol
 
-    val name: Name
-    val type: KotlinType
+    val type: IrType
 }

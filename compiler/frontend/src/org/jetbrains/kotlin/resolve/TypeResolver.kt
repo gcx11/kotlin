@@ -17,6 +17,7 @@
 package org.jetbrains.kotlin.resolve
 
 import com.intellij.util.SmartList
+import org.jetbrains.kotlin.builtins.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.builtins.createFunctionType
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersionSettings
@@ -29,9 +30,7 @@ import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.diagnostics.Errors.*
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.psi.codeFragmentUtil.debugTypeInfo
 import org.jetbrains.kotlin.psi.codeFragmentUtil.suppressDiagnosticsInDebugMode
 import org.jetbrains.kotlin.psi.debugText.getDebugText
 import org.jetbrains.kotlin.psi.psiUtil.checkReservedYield
@@ -112,12 +111,6 @@ class TypeResolver(
         if (cachedType != null) return type(cachedType)
 
         val resolvedTypeSlice = if (c.abbreviated) BindingContext.ABBREVIATED_TYPE else BindingContext.TYPE
-
-        val debugType = typeReference.debugTypeInfo
-        if (debugType != null) {
-            c.trace.record(resolvedTypeSlice, typeReference, debugType)
-            return type(debugType)
-        }
 
         val annotations = resolveTypeAnnotations(c, typeReference)
         val type = resolveTypeElement(c, annotations, typeReference.modifierList, typeReference.typeElement)
@@ -698,7 +691,7 @@ class TypeResolver(
     private fun collectArgumentsForClassifierTypeConstructor(
         c: TypeResolutionContext,
         classifierDescriptor: ClassifierDescriptorWithTypeParameters,
-        qualifierParts: List<QualifiedExpressionResolver.QualifierPart>
+        qualifierParts: List<QualifiedExpressionResolver.ExpressionQualifierPart>
     ): Pair<List<KtTypeProjection>, List<TypeProjection>?>? {
         val classifierDescriptorChain = classifierDescriptor.classifierDescriptorsFromInnerToOuter()
         val reversedQualifierParts = qualifierParts.asReversed()
@@ -774,7 +767,7 @@ class TypeResolver(
                 return Pair(result, null)
             } else {
                 assert(restParameters.size == restArguments.size) {
-                    "Number of type of restParameters should be equal to ${restArguments.size}, " +
+                    "Number of type of restParameters should be equal to ${restParameters.size}, " +
                             "but ${restArguments.size} were found for $classifierDescriptor/$nextParameterOwner"
                 }
 

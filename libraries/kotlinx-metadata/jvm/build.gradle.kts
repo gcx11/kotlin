@@ -4,10 +4,25 @@ description = "Kotlin JVM metadata manipulation library"
 
 plugins {
     kotlin("jvm")
+    id("jps-compatible")
 }
 
-// Change this version before publishing
-version = "0.1-SNAPSHOT"
+/*
+ * To publish this library use `:kotlinx-metadata-jvm:publish` task and specify the following parameters
+ *
+ *      - `-PdeployVersion=1.2.nn`: the version of the standard library dependency to put into .pom
+ *      - `-PkotlinxMetadataDeployVersion=0.0.n`: the version of the library itself
+ *      - `-PdeployRepoUrl=repository_url`: (optional) the url of repository to deploy to;
+ *          if not specified, the local directory repository `build/repo` will be used
+ *      - `-PdeployRepoUsername=username`: (optional) the username to authenticate in the deployment repository
+ *      - `-PdeployRepoPassword=password`: (optional) the password to authenticate in the deployment repository
+ */
+group = "org.jetbrains.kotlinx"
+val deployVersion = findProperty("kotlinxMetadataDeployVersion") as String?
+version = deployVersion ?: "0.1-SNAPSHOT"
+
+jvmTarget = "1.6"
+javaHome = rootProject.extra["JDK_16"] as String
 
 sourceSets {
     "main" { projectDefault() }
@@ -21,7 +36,7 @@ configurations.getByName("compileOnly").extendsFrom(shadows)
 configurations.getByName("testCompile").extendsFrom(shadows)
 
 dependencies {
-    compile(project(":kotlin-stdlib"))
+    compile(kotlinStdlib())
     shadows(project(":kotlinx-metadata"))
     shadows(project(":core:metadata"))
     shadows(project(":core:metadata.jvm"))
@@ -29,18 +44,24 @@ dependencies {
     testCompile(commonDep("junit:junit"))
     testCompile(intellijDep()) { includeJars("asm-all", rootProject = rootProject) }
     testCompileOnly(project(":kotlin-reflect-api"))
-    testRuntime(projectDist(":kotlin-reflect"))
+    testRuntime(project(":kotlin-reflect"))
+}
+
+
+if (deployVersion != null) {
+    publish()
 }
 
 noDefaultJar()
 
-val shadowJar = task<ShadowJar>("shadowJar") {
+task<ShadowJar>("shadowJar") {
     callGroovy("manifestAttributes", manifest, project)
     manifest.attributes["Implementation-Version"] = version
 
-    from(the<JavaPluginConvention>().sourceSets["main"].output)
+    from(mainSourceSet.output)
     exclude("**/*.proto")
     configurations = listOf(shadows)
+    relocate("org.jetbrains.kotlin", "kotlinx.metadata.internal")
 
     val artifactRef = outputs.files.singleFile
     runtimeJarArtifactBy(this, artifactRef)
@@ -59,8 +80,3 @@ sourcesJar {
 }
 
 javadocJar()
-// publish()
-
-projectTest {
-    workingDir = rootDir
-}

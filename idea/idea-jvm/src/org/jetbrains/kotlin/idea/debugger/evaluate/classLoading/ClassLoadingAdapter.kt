@@ -16,18 +16,15 @@
 
 package org.jetbrains.kotlin.idea.debugger.evaluate.classLoading
 
-import com.intellij.debugger.engine.DebugProcessImpl
-import com.intellij.debugger.engine.evaluation.EvaluationContextImpl
-import com.intellij.debugger.impl.DebuggerUtilsEx
 import com.sun.jdi.ArrayReference
 import com.sun.jdi.ArrayType
 import com.sun.jdi.ClassLoaderReference
 import com.sun.jdi.Value
+import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
+import org.jetbrains.kotlin.idea.debugger.evaluate.GENERATED_FUNCTION_NAME
 import org.jetbrains.org.objectweb.asm.ClassReader
 import org.jetbrains.org.objectweb.asm.Label
-import org.jetbrains.org.objectweb.asm.tree.ClassNode
-import org.jetbrains.org.objectweb.asm.tree.JumpInsnNode
-import org.jetbrains.org.objectweb.asm.tree.LabelNode
+import org.jetbrains.org.objectweb.asm.tree.*
 import kotlin.math.min
 
 interface ClassLoadingAdapter {
@@ -39,16 +36,16 @@ interface ClassLoadingAdapter {
             OrdinaryClassLoadingAdapter()
         )
 
-        fun loadClasses(context: EvaluationContextImpl, classes: Collection<ClassToLoad>): ClassLoaderReference? {
-            val hasAdditionalClasses = classes.size > 1
-            val hasLoops = classes.isNotEmpty() && doesContainLoops(classes.first { it.isMainClass() }.bytes)
+        fun loadClasses(context: ExecutionContext, classes: Collection<ClassToLoad>): ClassLoaderReference? {
+            val mainClass = classes.firstOrNull { it.isMainClass } ?: return null
+
+            var info = ClassInfoForEvaluator(containsAdditionalClasses = classes.size > 1)
+            if (!info.containsAdditionalClasses) {
+                info = analyzeClass(mainClass, info)
+            }
 
             for (adapter in ADAPTERS) {
-                if (adapter.isApplicable(
-                        context,
-                        hasAdditionalClasses = hasAdditionalClasses,
-                        hasLoops = hasLoops
-                )) {
+                if (adapter.isApplicable(context, info)) {
                     return adapter.loadClasses(context, classes)
                 }
             }
@@ -56,41 +53,56 @@ interface ClassLoadingAdapter {
             return null
         }
 
-        private fun doesContainLoops(clazz: ByteArray): Boolean {
-            val classNode = ClassNode().apply { ClassReader(clazz).accept(this, ClassReader.EXPAND_FRAMES) }
-            val methodToRun = classNode.methods.single()
+        data class ClassInfoForEvaluator(
+            val containsLoops: Boolean = false,
+            val containsCodeUnsupportedInEval4J: Boolean = false,
+            val containsAdditionalClasses: Boolean = false
+        ) {
+            val isCompilingEvaluatorPreferred: Boolean
+                get() = containsLoops || containsCodeUnsupportedInEval4J || containsAdditionalClasses
+        }
 
-            val labelsVisited = hashSetOf<Label>()
-            var currentInsn = methodToRun.instructions.first
-            while (currentInsn != null) {
-                if (currentInsn is LabelNode) {
-                    labelsVisited += currentInsn.label
-                }
-                else if (currentInsn is JumpInsnNode) {
-                    if (currentInsn.label.label in labelsVisited) {
-                        return true
+        private fun analyzeClass(classToLoad: ClassToLoad, info: ClassInfoForEvaluator): ClassInfoForEvaluator {
+            val classNode = ClassNode().apply { ClassReader(classToLoad.bytes).accept(this, 0) }
+            val methodToRun = classNode.methods.single { it.name == GENERATED_FUNCTION_NAME }
+
+            val visitedLabels = hashSetOf<Label>()
+
+            tailrec fun analyzeInsn(insn: AbstractInsnNode, info: ClassInfoForEvaluator): ClassInfoForEvaluator {
+                when (insn) {
+                    is LabelNode -> visitedLabels += insn.label
+                    is JumpInsnNode -> {
+                        if (insn.label.label in visitedLabels) {
+                            return info.copy(containsLoops = true)
+                        }
+                    }
+                    is TableSwitchInsnNode, is LookupSwitchInsnNode -> {
+                        return info.copy(containsCodeUnsupportedInEval4J = true)
                     }
                 }
 
-                currentInsn = currentInsn.next
+                val nextInsn = insn.next ?: return info
+                return analyzeInsn(nextInsn, info)
             }
 
-            return false
+            val firstInsn = methodToRun.instructions?.first ?: return info
+            return analyzeInsn(firstInsn, info)
         }
     }
 
-    fun isApplicable(context: EvaluationContextImpl, hasAdditionalClasses: Boolean, hasLoops: Boolean): Boolean
+    fun isApplicable(context: ExecutionContext, info: ClassInfoForEvaluator): Boolean
 
-    fun loadClasses(context: EvaluationContextImpl, classes: Collection<ClassToLoad>): ClassLoaderReference
+    fun loadClasses(context: ExecutionContext, classes: Collection<ClassToLoad>): ClassLoaderReference
 
-    fun mirrorOfByteArray(bytes: ByteArray, context: EvaluationContextImpl, process: DebugProcessImpl): ArrayReference {
-        val arrayClass = process.findClass(context, "byte[]", context.classLoader) as ArrayType
-        val reference = process.newInstance(arrayClass, bytes.size)
-        DebuggerUtilsEx.keep(reference, context)
+    fun mirrorOfByteArray(bytes: ByteArray, context: ExecutionContext): ArrayReference {
+        val classLoader = context.classLoader
+        val arrayClass = context.findClass("byte[]", classLoader) as ArrayType
+        val reference = context.newInstance(arrayClass, bytes.size)
+        context.keepReference(reference)
 
         val mirrors = ArrayList<Value>(bytes.size)
         for (byte in bytes) {
-            mirrors += process.virtualMachineProxy.mirrorOf(byte)
+            mirrors += context.vm.mirrorOf(byte)
         }
 
         var loaded = 0

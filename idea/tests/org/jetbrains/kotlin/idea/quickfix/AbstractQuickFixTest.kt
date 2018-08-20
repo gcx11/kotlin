@@ -1,50 +1,39 @@
 /*
- * Copyright 2010-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.idea.quickfix
 
 import com.intellij.codeInsight.daemon.quickFix.ActionHint
 import com.intellij.codeInsight.intention.IntentionAction
-import com.intellij.codeInspection.InspectionProfileEntry
-import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.SuppressableProblemGroup
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.CharsetToolkit
 import com.intellij.rt.execution.junit.FileComparisonFailure
-import com.intellij.testFramework.*
+import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.LightProjectDescriptor
+import com.intellij.testFramework.UsefulTestCase
 import com.intellij.util.ui.UIUtil
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
-import org.jetbrains.kotlin.idea.quickfix.utils.findInspectionFile
 import org.jetbrains.kotlin.idea.test.*
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.test.InTextDirectivesUtils
 import org.junit.Assert
+import org.junit.ComparisonFailure
 import java.io.File
 import java.io.IOException
 
-abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
+abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase(), QuickFixTest {
     @Throws(Exception::class)
     protected fun doTest(beforeFileName: String) {
         val beforeFileText = FileUtil.loadFile(File(beforeFileName))
-        configureCompilerOptions(beforeFileText, project, module)
+        val configured = configureCompilerOptions(beforeFileText, project, module)
 
-        val inspections = parceInspectionsToEnable(beforeFileName, beforeFileText).toTypedArray()
+        val inspections = parseInspectionsToEnable(beforeFileName, beforeFileText).toTypedArray()
 
         try {
             myFixture.enableInspections(*inspections)
@@ -53,6 +42,9 @@ abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
             checkForUnexpectedErrors()
         } finally {
             myFixture.disableInspections(*inspections)
+            if (configured) {
+                rollbackCompilerOptions(project, module)
+            }
         }
     }
 
@@ -155,7 +147,14 @@ abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
                 fail("Action with text '" + actionHint.expectedText + "' not found\nAvailable actions: " +
                      myFixture.availableIntentions.joinToString(prefix = "[", postfix = "]") { it.text })
             }
-            myFixture.launchAction(intention!!)
+
+            val stubComparisonFailure: ComparisonFailure? = try {
+                myFixture.launchAction(intention!!)
+                null
+            } catch (comparisonFailure: ComparisonFailure) {
+                comparisonFailure
+            }
+
             UIUtil.dispatchAllInvocationEvents()
             UIUtil.dispatchAllInvocationEvents()
 
@@ -165,35 +164,14 @@ abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
             }
 
             myFixture.checkResultByFile(File(fileName).name + ".after")
+
+            if (stubComparisonFailure != null) {
+                throw stubComparisonFailure
+            }
         }
         else {
             assertNull("Action with text ${actionHint.expectedText} is present, but should not", intention)
         }
-    }
-
-    private fun parceInspectionsToEnable(beforeFileName: String, beforeFileText: String): List<InspectionProfileEntry> {
-        val toolsStrings = InTextDirectivesUtils.findListWithPrefixes(beforeFileText, "TOOL:")
-        if (toolsStrings.isNotEmpty()) {
-            val inspections =  toolsStrings.map { toolFqName ->
-                try {
-                    val aClass = Class.forName(toolFqName)
-                    return@map aClass.newInstance() as LocalInspectionTool
-                }
-                catch (e: Exception) {
-                    throw IllegalArgumentException("Failed to create inspection for key '$toolFqName'", e)
-                }
-            }
-            return inspections
-        }
-
-        val inspectionFile = findInspectionFile(File(beforeFileName).parentFile)
-        if (inspectionFile != null) {
-            val className = FileUtil.loadFile(inspectionFile).trim { it <= ' ' }
-            val inspectionClass = Class.forName(className) as Class<InspectionProfileEntry>
-            return InspectionTestUtil.instantiateTools(listOf<Class<out InspectionProfileEntry>>(inspectionClass))
-        }
-
-        return emptyList()
     }
 
     @Throws(ClassNotFoundException::class)

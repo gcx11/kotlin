@@ -1,4 +1,4 @@
-// IGNORE_BACKEND: NATIVE
+// IGNORE_BACKEND: JVM_IR
 // WITH_COROUTINES
 // WITH_RUNTIME
 // COMMON_COROUTINES_TEST
@@ -26,7 +26,7 @@ class C {
     }
 }
 
-suspend fun <T> foo(v: T): T = suspendCoroutineOrReturn { x ->
+suspend fun <T> foo(v: T): T = suspendCoroutineUninterceptedOrReturn { x ->
     continuation = {
         x.resume(v)
     }

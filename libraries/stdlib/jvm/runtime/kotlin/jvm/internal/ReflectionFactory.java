@@ -8,6 +8,8 @@ package kotlin.jvm.internal;
 import kotlin.SinceKotlin;
 import kotlin.reflect.*;
 
+import java.util.List;
+
 public class ReflectionFactory {
     private static final String KOTLIN_JVM_FUNCTIONS = "kotlin.jvm.functions.";
 
@@ -33,6 +35,11 @@ public class ReflectionFactory {
 
     @SinceKotlin(version = "1.1")
     public String renderLambdaToString(Lambda lambda) {
+        return renderLambdaToString((FunctionBase) lambda);
+    }
+
+    @SinceKotlin(version = "1.3")
+    public String renderLambdaToString(FunctionBase lambda) {
         String result = lambda.getClass().getGenericInterfaces()[0].toString();
         return result.startsWith(KOTLIN_JVM_FUNCTIONS) ? result.substring(KOTLIN_JVM_FUNCTIONS.length()) : result;
     }
@@ -67,5 +74,12 @@ public class ReflectionFactory {
 
     public KMutableProperty2 mutableProperty2(MutablePropertyReference2 p) {
         return p;
+    }
+
+    // typeOf
+
+    @SinceKotlin(version = "1.4")
+    public KType typeOf(KClassifier klass, List<KTypeProjection> arguments, boolean isMarkedNullable) {
+        return new TypeReference(klass, arguments, isMarkedNullable);
     }
 }

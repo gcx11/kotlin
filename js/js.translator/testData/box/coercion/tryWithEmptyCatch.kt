@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1112
+// EXPECTED_REACHABLE_NODES: 1282
 fun test(x: Int): Any {
     return try {
         if (x % 2 == 0) throw RuntimeException()

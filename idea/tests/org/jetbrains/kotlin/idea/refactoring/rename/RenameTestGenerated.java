@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -214,6 +214,16 @@ public class RenameTestGenerated extends AbstractRenameTest {
         runTest("idea/testData/refactoring/rename/importAliasByRef/importAliasByRef.test");
     }
 
+    @TestMetadata("internalFunWithOverrides/internalFunWithOverrides.test")
+    public void testInternalFunWithOverrides_InternalFunWithOverrides() throws Exception {
+        runTest("idea/testData/refactoring/rename/internalFunWithOverrides/internalFunWithOverrides.test");
+    }
+
+    @TestMetadata("internalVarWithOverrides/internalFunWithOverrides.test")
+    public void testInternalVarWithOverrides_InternalFunWithOverrides() throws Exception {
+        runTest("idea/testData/refactoring/rename/internalVarWithOverrides/internalFunWithOverrides.test");
+    }
+
     @TestMetadata("javaClassImportAliasByRef/javaClassImportAliasByRef.test")
     public void testJavaClassImportAliasByRef_JavaClassImportAliasByRef() throws Exception {
         runTest("idea/testData/refactoring/rename/javaClassImportAliasByRef/javaClassImportAliasByRef.test");
@@ -222,6 +232,16 @@ public class RenameTestGenerated extends AbstractRenameTest {
     @TestMetadata("javaEnumValueOf/javaEnumValueOf.test")
     public void testJavaEnumValueOf_JavaEnumValueOf() throws Exception {
         runTest("idea/testData/refactoring/rename/javaEnumValueOf/javaEnumValueOf.test");
+    }
+
+    @TestMetadata("javaGetterToOrdinaryMethod/javaGetterToOrdinaryMethod.test")
+    public void testJavaGetterToOrdinaryMethod_JavaGetterToOrdinaryMethod() throws Exception {
+        runTest("idea/testData/refactoring/rename/javaGetterToOrdinaryMethod/javaGetterToOrdinaryMethod.test");
+    }
+
+    @TestMetadata("javaSetterToOrdinaryMethod/javaSetterToOrdinaryMethod.test")
+    public void testJavaSetterToOrdinaryMethod_JavaSetterToOrdinaryMethod() throws Exception {
+        runTest("idea/testData/refactoring/rename/javaSetterToOrdinaryMethod/javaSetterToOrdinaryMethod.test");
     }
 
     @TestMetadata("labeledAnonymousFunByLabel/labeledLambdaByLabel.test")
@@ -269,9 +289,19 @@ public class RenameTestGenerated extends AbstractRenameTest {
         runTest("idea/testData/refactoring/rename/labeledLoopByLabel/labeledLoopByLabel.test");
     }
 
+    @TestMetadata("labeledLoopByLabelRefInBreak2/labeledLoopByLabelRefInBreak.test")
+    public void testLabeledLoopByLabelRefInBreak2_LabeledLoopByLabelRefInBreak() throws Exception {
+        runTest("idea/testData/refactoring/rename/labeledLoopByLabelRefInBreak2/labeledLoopByLabelRefInBreak.test");
+    }
+
     @TestMetadata("labeledLoopByLabelRefInBreak/labeledLoopByLabelRefInBreak.test")
     public void testLabeledLoopByLabelRefInBreak_LabeledLoopByLabelRefInBreak() throws Exception {
         runTest("idea/testData/refactoring/rename/labeledLoopByLabelRefInBreak/labeledLoopByLabelRefInBreak.test");
+    }
+
+    @TestMetadata("labeledLoopByLabelRefInContinue2/labeledLoopByLabelRefInContinue.test")
+    public void testLabeledLoopByLabelRefInContinue2_LabeledLoopByLabelRefInContinue() throws Exception {
+        runTest("idea/testData/refactoring/rename/labeledLoopByLabelRefInContinue2/labeledLoopByLabelRefInContinue.test");
     }
 
     @TestMetadata("labeledLoopByLabelRefInContinue/labeledLoopByLabelRefInContinue.test")

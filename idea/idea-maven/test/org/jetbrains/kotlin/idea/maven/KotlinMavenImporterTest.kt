@@ -24,20 +24,32 @@ import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.impl.libraries.LibraryEx
+import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import com.intellij.util.PathUtil
 import junit.framework.TestCase
 import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.config.*
+import org.jetbrains.kotlin.idea.caches.project.productionSourceInfo
+import org.jetbrains.kotlin.idea.caches.project.testSourceInfo
 import org.jetbrains.kotlin.idea.caches.resolve.analyzeAndGetResult
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
+import org.jetbrains.kotlin.idea.formatter.KotlinObsoleteCodeStyle
+import org.jetbrains.kotlin.idea.formatter.KotlinStyleGuideCodeStyle
+import org.jetbrains.kotlin.idea.formatter.kotlinCodeStyleDefaults
 import org.jetbrains.kotlin.idea.framework.CommonLibraryKind
 import org.jetbrains.kotlin.idea.framework.JSLibraryKind
 import org.jetbrains.kotlin.idea.framework.KotlinSdkType
+import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.refactoring.toPsiFile
+import org.jetbrains.kotlin.js.resolve.JsPlatform
+import org.jetbrains.kotlin.platform.impl.*
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.resolve.TargetPlatform
+import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
 import org.junit.Assert
 import java.io.File
 
@@ -165,6 +177,140 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
 
         assertSources("project", "src/main/kotlin", "src/main/kotlin.jvm")
         assertTestSources("project", "src/test/java", "src/test/kotlin", "src/test/kotlin.jvm")
+    }
+
+    fun testWithKapt() {
+        createProjectSubDirs("src/main/kotlin", "src/main/kotlin.jvm", "src/test/kotlin", "src/test/kotlin.jvm")
+
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib</artifactId>
+                    <version>$kotlinVersion</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-plugin</artifactId>
+
+                        <executions>
+                            <execution>
+                                <id>kapt</id>
+                                <goals>
+                                    <goal>kapt</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceDirs>
+                                        <sourceDir>src/main/kotlin</sourceDir>
+                                        <sourceDir>src/main/java</sourceDir>
+                                    </sourceDirs>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceDirs>
+                                        <sourceDir>src/main/kotlin</sourceDir>
+                                        <sourceDir>src/main/java</sourceDir>
+                                    </sourceDirs>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>test-kapt</id>
+                                <goals>
+                                    <goal>test-kapt</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceDirs>
+                                        <sourceDir>src/test/kotlin</sourceDir>
+                                        <sourceDir>src/test/java</sourceDir>
+                                    </sourceDirs>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>test-compile</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>test-compile</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceDirs>
+                                        <sourceDir>src/test/kotlin</sourceDir>
+                                        <sourceDir>src/test/java</sourceDir>
+                                        <sourceDir>target/generated-sources/kapt/test</sourceDir>
+                                    </sourceDirs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            """
+        )
+
+        assertModules("project")
+        assertImporterStatePresent()
+
+        assertSources("project", "src/main/java", "src/main/kotlin")
+        assertTestSources("project", "src/test/java", "src/test/kotlin")
+    }
+
+    fun testImportObsoleteCodeStyle() {
+        Assert.assertNull(CodeStyleSettingsManager.getSettings(myProject).kotlinCodeStyleDefaults())
+
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <properties>
+                <kotlin.code.style>obsolete</kotlin.code.style>
+            </properties>
+            """
+        )
+
+        Assert.assertEquals(
+            KotlinObsoleteCodeStyle.CODE_STYLE_ID,
+            CodeStyleSettingsManager.getSettings(myProject).kotlinCodeStyleDefaults()
+        )
+    }
+
+    fun testImportOfficialCodeStyle() {
+        Assert.assertNull(CodeStyleSettingsManager.getSettings(myProject).kotlinCodeStyleDefaults())
+
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <properties>
+                <kotlin.code.style>official</kotlin.code.style>
+            </properties>
+            """
+        )
+
+        Assert.assertEquals(
+            KotlinStyleGuideCodeStyle.CODE_STYLE_ID,
+            CodeStyleSettingsManager.getSettings(myProject).kotlinCodeStyleDefaults()
+        )
     }
 
     fun testReImportRemoveDir() {
@@ -484,11 +630,11 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
             Assert.assertEquals(true, compilerArguments!!.suppressWarnings)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals("foobar.jar", (compilerArguments as K2JVMCompilerArguments).classpath)
             Assert.assertEquals(
-                "-Xmulti-platform",
+                "-version",
                 compilerSettings!!.additionalArguments
             )
         }
@@ -605,7 +751,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
             Assert.assertEquals("1.0", compilerArguments!!.languageVersion)
             Assert.assertEquals("1.0", apiLevel!!.versionString)
             Assert.assertEquals("1.0", compilerArguments!!.apiVersion)
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
         }
 
@@ -680,13 +826,13 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
             Assert.assertEquals(true, compilerArguments!!.suppressWarnings)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
-            Assert.assertTrue(targetPlatformKind == TargetPlatformKind.JavaScript)
+            Assert.assertTrue(platform.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(true, sourceMap)
                 Assert.assertEquals("commonjs", moduleKind)
             }
             Assert.assertEquals(
-                "-meta-info -output test.js -Xmulti-platform",
+                "-meta-info -output test.js",
                 compilerSettings!!.additionalArguments
             )
         }
@@ -697,10 +843,10 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJsCustomOutputPaths() {
@@ -835,10 +981,10 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
             Assert.assertEquals("1.0", compilerArguments!!.apiVersion)
             Assert.assertEquals(true, compilerArguments!!.suppressWarnings)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals("foobar.jar", (compilerArguments as K2JVMCompilerArguments).classpath)
-            Assert.assertEquals("-Xmulti-platform", compilerSettings!!.additionalArguments)
+            Assert.assertEquals("-version", compilerSettings!!.additionalArguments)
         }
     }
 
@@ -895,7 +1041,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
             Assert.assertEquals("c:/program files/jdk1.8", (compilerArguments as K2JVMCompilerArguments).classpath)
@@ -951,7 +1097,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
             Assert.assertEquals("c:/program files/jdk1.8", (compilerArguments as K2JVMCompilerArguments).classpath)
@@ -1005,7 +1151,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.platform)
 
         assertContentFolders("project", JavaSourceRootType.SOURCE, "src/main/kotlin")
         assertContentFolders("project", JavaSourceRootType.TEST_SOURCE, "src/test/java")
@@ -1060,7 +1206,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.platform)
     }
 
     fun testJvmDetectionByGoalWithCommonStdlib() {
@@ -1110,7 +1256,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.platform)
 
         assertContentFolders("project", JavaSourceRootType.SOURCE, "src/main/kotlin")
         assertContentFolders("project", JavaSourceRootType.TEST_SOURCE, "src/test/java")
@@ -1165,14 +1311,14 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJsDetectionByGoalWithJsStdlib() {
@@ -1222,14 +1368,14 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJsDetectionByGoalWithCommonStdlib() {
@@ -1279,14 +1425,14 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJsAndCommonStdlibKinds() {
@@ -1341,17 +1487,17 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isJavaScript)
 
         val rootManager = ModuleRootManager.getInstance(getModule("project"))
         val libraries = rootManager.orderEntries.filterIsInstance<LibraryOrderEntry>().map { it.library as LibraryEx }
         assertEquals(JSLibraryKind, libraries.single { it.name?.contains("kotlin-stdlib-js") == true }.kind)
         assertEquals(CommonLibraryKind, libraries.single { it.name?.contains("kotlin-stdlib-common") == true }.kind)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testCommonDetectionByGoalWithJvmStdlib() {
@@ -1395,14 +1541,14 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isCommon)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testCommonDetectionByGoalWithJsStdlib() {
@@ -1446,14 +1592,14 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isCommon)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testCommonDetectionByGoalWithCommonStdlib() {
@@ -1497,7 +1643,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isCommon)
 
         val rootManager = ModuleRootManager.getInstance(getModule("project"))
         val stdlib = rootManager.orderEntries.filterIsInstance<LibraryOrderEntry>().single().library
@@ -1505,10 +1651,10 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJvmDetectionByConflictingGoalsAndJvmStdlib() {
@@ -1558,12 +1704,12 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.platform)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testJsDetectionByConflictingGoalsAndJsStdlib() {
@@ -1613,12 +1759,12 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isJavaScript)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testCommonDetectionByConflictingGoalsAndCommonStdlib() {
@@ -1668,12 +1814,12 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.platform.isCommon)
 
-        assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
-        assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
-        assertContentFolders("project", KotlinResourceRootType.Resource, "src/main/resources")
-        assertContentFolders("project", KotlinResourceRootType.TestResource, "src/test/resources")
+        assertContentFolders("project", SourceKotlinRootType, "src/main/kotlin")
+        assertContentFolders("project", TestSourceKotlinRootType, "src/test/java")
+        assertContentFolders("project", ResourceKotlinRootType, "src/main/resources")
+        assertContentFolders("project", TestResourceKotlinRootType, "src/test/resources")
     }
 
     fun testNoPluginsInAdditionalArgs() {
@@ -1882,7 +2028,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.1", languageLevel!!.description)
             Assert.assertEquals("1.1", apiLevel!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
@@ -2105,7 +2251,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings("myModule1")) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.1", languageLevel!!.description)
             Assert.assertEquals("1.0", apiLevel!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
@@ -2116,7 +2262,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         }
 
         with(facetSettings("myModule2")) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals("1.1", languageLevel!!.description)
             Assert.assertEquals("1.0", apiLevel!!.description)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
@@ -2127,7 +2273,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         }
 
         with(facetSettings("myModule3")) {
-            Assert.assertEquals("JVM 1.8", targetPlatformKind!!.description)
+            Assert.assertEquals("JVM 1.8", platform!!.description)
             Assert.assertEquals(LanguageVersion.LATEST_STABLE, languageLevel)
             Assert.assertEquals(LanguageVersion.LATEST_STABLE, apiLevel)
             Assert.assertEquals("1.8", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
@@ -2366,20 +2512,20 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings("my-common-module1")) {
-            Assert.assertEquals(TargetPlatformKind.Common.description, targetPlatformKind!!.description)
+            Assert.assertEquals(CommonIdePlatformKind.Platform.description, platform!!.description)
         }
 
         with(facetSettings("my-common-module2")) {
-            Assert.assertEquals(TargetPlatformKind.Common.description, targetPlatformKind!!.description)
+            Assert.assertEquals(CommonIdePlatformKind.Platform.description, platform!!.description)
         }
 
         with(facetSettings("my-jvm-module")) {
-            Assert.assertEquals(TargetPlatformKind.Jvm(JvmTarget.JVM_1_6).description, targetPlatformKind!!.description)
+            Assert.assertEquals(JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6).description, platform!!.description)
             Assert.assertEquals(listOf("my-common-module1", "my-common-module2"), implementedModuleNames)
         }
 
         with(facetSettings("my-js-module")) {
-            Assert.assertEquals(TargetPlatformKind.JavaScript.description, targetPlatformKind!!.description)
+            Assert.assertEquals(JsIdePlatformKind.Platform.description, platform!!.description)
             Assert.assertEquals(listOf("my-common-module1"), implementedModuleNames)
         }
     }
@@ -2714,6 +2860,184 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         with(facetSettings) {
             Assert.assertEquals("-Xjsr305=strict", compilerSettings!!.additionalArguments)
         }
+    }
+
+    fun testInternalArgumentsFacetImporting() {
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib</artifactId>
+                    <version>$kotlinVersion</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <sourceDirectory>src/main/kotlin</sourceDirectory>
+
+                <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-plugin</artifactId>
+
+                        <executions>
+                            <execution>
+                                <id>compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <languageVersion>1.2</languageVersion>
+                            <args>
+                                <arg>-XXLanguage:+InlineClasses</arg>
+                            </args>
+                            <jvmTarget>1.8</jvmTarget>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            """
+        )
+
+        assertImporterStatePresent()
+
+        // Check that we haven't lost internal argument during importing to facet
+        Assert.assertEquals("-XXLanguage:+InlineClasses", facetSettings.compilerSettings?.additionalArguments)
+
+        // Check that internal argument influenced LanguageVersionSettings correctly
+        Assert.assertEquals(
+            LanguageFeature.State.ENABLED,
+            getModule("project").languageVersionSettings.getFeatureSupport(LanguageFeature.InlineClasses)
+        )
+    }
+
+    fun testStableModuleNameWhileUsingMaven_JVM() {
+        createProjectSubDirs("src/main/kotlin")
+
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib</artifactId>
+                    <version>$kotlinVersion</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <sourceDirectory>src/main/kotlin</sourceDirectory>
+
+                <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-plugin</artifactId>
+
+                        <executions>
+                            <execution>
+                                <id>compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <languageVersion>1.2</languageVersion>
+                            <jvmTarget>1.8</jvmTarget>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            """
+        )
+
+        assertImporterStatePresent()
+
+        checkStableModuleName("project", "project", JvmPlatform, isProduction = true)
+        checkStableModuleName("project", "project", JvmPlatform, isProduction = false)
+    }
+
+    fun testStableModuleNameWhileUsngMaven_JS() {
+        createProjectSubDirs("src/main/kotlin", "src/main/kotlin.jvm", "src/test/kotlin", "src/test/kotlin.jvm")
+
+        importProject(
+            """
+            <groupId>test</groupId>
+            <artifactId>project</artifactId>
+            <version>1.0.0</version>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-js</artifactId>
+                    <version>$kotlinVersion</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <sourceDirectory>src/main/kotlin</sourceDirectory>
+
+                <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-plugin</artifactId>
+
+                        <executions>
+                            <execution>
+                                <id>compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>js</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <languageVersion>1.1</languageVersion>
+                            <apiVersion>1.0</apiVersion>
+                            <multiPlatform>true</multiPlatform>
+                            <nowarn>true</nowarn>
+                            <args>
+                                <arg>-Xcoroutines=enable</arg>
+                            </args>
+                            <sourceMap>true</sourceMap>
+                            <outputFile>test.js</outputFile>
+                            <metaInfo>true</metaInfo>
+                            <moduleKind>commonjs</moduleKind>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            """
+        )
+
+        assertImporterStatePresent()
+
+        // Note that we check name induced by '-output-file' -- may be it's not the best
+        // decision, but we don't have a better one
+        checkStableModuleName("project", "test", JsPlatform, isProduction = true)
+        checkStableModuleName("project", "test", JsPlatform, isProduction = false)
+    }
+
+    private fun checkStableModuleName(projectName: String, expectedName: String, platform: TargetPlatform, isProduction: Boolean) {
+        val module = getModule(projectName)
+        val moduleInfo = if (isProduction) module.productionSourceInfo() else module.testSourceInfo()
+
+        val resolutionFacade = KotlinCacheService.getInstance(myProject).getResolutionFacadeByModuleInfo(moduleInfo!!, platform)!!
+        val moduleDescriptor = resolutionFacade.moduleDescriptor
+
+        Assert.assertEquals("<$expectedName>", moduleDescriptor.stableName?.asString())
     }
 
     private fun assertImporterStatePresent() {

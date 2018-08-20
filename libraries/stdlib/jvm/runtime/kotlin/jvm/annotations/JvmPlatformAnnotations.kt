@@ -3,8 +3,6 @@
  * that can be found in the license/LICENSE.txt file.
  */
 
-@file:Suppress("ACTUAL_WITHOUT_EXPECT") // for building kotlin-runtime
-
 package kotlin.jvm
 
 import kotlin.reflect.KClass
@@ -18,7 +16,7 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
-public annotation class JvmOverloads
+public actual annotation class JvmOverloads
 
 /**
  * Specifies that an additional static method needs to be generated from this element if it's a function.
@@ -30,7 +28,7 @@ public annotation class JvmOverloads
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
-public annotation class JvmStatic
+public actual annotation class JvmStatic
 
 /**
  * Specifies the name for the Java class or method which is generated from this element.
@@ -63,11 +61,20 @@ public actual annotation class JvmMultifileClass
 @Retention(AnnotationRetention.SOURCE)
 @MustBeDocumented
 @SinceKotlin("1.2")
-internal annotation class JvmPackageName(val name: String)
+internal actual annotation class JvmPackageName(actual val name: String)
 
+/**
+ * Sets `ACC_SYNTHETIC` flag on the annotated target in the Java bytecode.
+ *
+ * Synthetic targets become inaccessible for Java sources at compile time while still being accessible for Kotlin sources.
+ * Marking target as synthetic is a binary compatible change, already compiled Java code will be able to access such target.
+ *
+ * This annotation is intended for *rare cases* when API designer needs to hide Kotlin-specific target from Java API
+ * while keeping it a part of Kotlin API so the resulting API is idiomatic for both languages.
+ */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.SOURCE)
-public annotation class JvmSynthetic
+public actual annotation class JvmSynthetic
 
 /**
  * This annotation indicates what exceptions should be declared by a function when compiled to a JVM method.
@@ -115,7 +122,7 @@ public actual annotation class JvmField
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
-public annotation class JvmSuppressWildcards(val suppress: Boolean = true)
+public actual annotation class JvmSuppressWildcards(actual val suppress: Boolean = true)
 
 /**
  * Instructs compiler to generate wildcard for annotated type arguments corresponding to parameters with declaration-site variance.
@@ -125,4 +132,4 @@ public annotation class JvmSuppressWildcards(val suppress: Boolean = true)
 @Target(AnnotationTarget.TYPE)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
-public annotation class JvmWildcard
+public actual annotation class JvmWildcard

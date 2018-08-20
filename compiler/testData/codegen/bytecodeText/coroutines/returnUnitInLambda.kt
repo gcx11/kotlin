@@ -1,15 +1,15 @@
-// WITH_RUNTIME
+// IGNORE_BACKEND: JVM_IR
 // COMMON_COROUTINES_TEST
 // WITH_COROUTINES
+// TREAT_AS_ONE_FILE
 
 import helpers.*
 import COROUTINES_PACKAGE.*
 import COROUTINES_PACKAGE.intrinsics.*
-// TREAT_AS_ONE_FILE
 
 var res = "FAIL"
 
-suspend fun suspendHere() = suspendCoroutineOrReturn<Unit> {
+suspend fun suspendHere() = suspendCoroutineUninterceptedOrReturn<Unit> {
     res = "OK"
     it.resume(Unit)
     COROUTINE_SUSPENDED

@@ -1,4 +1,5 @@
 // !LANGUAGE: +InlineClasses
+// IGNORE_BACKEND: JVM_IR
 
 // FILE: 1.kt
 
@@ -10,7 +11,11 @@ inline class A(val x: Int) {
     inline fun result(other: A): String = if (other.x == x) "OK" else "fail"
 }
 
+inline fun stub() {}
+
 // FILE: 2.kt
+// NO_CHECK_LAMBDA_INLINING
+// ^ TODO
 
 import test.*
 

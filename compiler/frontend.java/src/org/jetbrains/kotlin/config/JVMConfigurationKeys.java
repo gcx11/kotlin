@@ -30,10 +30,6 @@ public class JVMConfigurationKeys {
     private JVMConfigurationKeys() {
     }
 
-    // roots, including dependencies and own source
-    public static final CompilerConfigurationKey<List<ContentRoot>> CONTENT_ROOTS =
-            CompilerConfigurationKey.create("content roots");
-
     public static final CompilerConfigurationKey<File> OUTPUT_DIRECTORY =
             CompilerConfigurationKey.create("output directory");
     public static final CompilerConfigurationKey<File> OUTPUT_JAR =
@@ -73,8 +69,6 @@ public class JVMConfigurationKeys {
             CompilerConfigurationKey.create("do not throw NPE on explicit 'equals' call for null receiver of platform boxed primitive type");
     public static final CompilerConfigurationKey<Boolean> DISABLE_OPTIMIZATION =
             CompilerConfigurationKey.create("disable optimization");
-    public static final CompilerConfigurationKey<Boolean> INHERIT_MULTIFILE_PARTS =
-            CompilerConfigurationKey.create("compile multifile classes to a hierarchy of parts and facade");
     public static final CompilerConfigurationKey<Boolean> USE_TYPE_TABLE =
             CompilerConfigurationKey.create("use type table in serializer");
 
@@ -138,9 +132,6 @@ public class JVMConfigurationKeys {
 
     public static final CompilerConfigurationKey<List<String>> ADDITIONAL_JAVA_MODULES =
             CompilerConfigurationKey.create("additional Java modules");
-
-    public static final CompilerConfigurationKey<String> OUTPUT_IMPORTS =
-            CompilerConfigurationKey.create("output imports");
 
     public static final CompilerConfigurationKey<Boolean> ENABLE_JVM_DEFAULT =
             CompilerConfigurationKey.create("Allow to use '@JvmDefault'");

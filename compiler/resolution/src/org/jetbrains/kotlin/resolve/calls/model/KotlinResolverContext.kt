@@ -42,7 +42,8 @@ class KotlinCallComponents(
     val constraintInjector: ConstraintInjector,
     val reflectionTypes: ReflectionTypes,
     val builtIns: KotlinBuiltIns,
-    val languageVersionSettings: LanguageVersionSettings
+    val languageVersionSettings: LanguageVersionSettings,
+    val samConversionTransformer: SamConversionTransformer
 )
 
 class SimpleCandidateFactory(
@@ -207,7 +208,7 @@ enum class KotlinCallKind(vararg resolutionPart: ResolutionPart) {
         CreateFreshVariablesSubstitutor,
         CheckExplicitReceiverKindConsistency,
         CheckReceivers,
-        CheckArguments,
+        CheckArgumentsInParenthesis,
         CheckExternalArgument,
         PostponedVariablesInitializerResolutionPart
     ),

@@ -45,7 +45,7 @@ internal val ReceiverValueWithSmartCastInfo.unstableType: UnwrappedType?
     }
 
 // with all smart casts if stable
-internal val ReceiverValueWithSmartCastInfo.stableType: UnwrappedType
+val ReceiverValueWithSmartCastInfo.stableType: UnwrappedType
     get() {
         if (!isStable || possibleTypes.isEmpty()) return receiverValue.type.unwrap()
         return intersectWrappedTypes(possibleTypes + receiverValue.type)
@@ -69,7 +69,7 @@ fun ValueParameterDescriptor.hasDefaultValue(): Boolean {
     return DFS.ifAny(
         listOf(this),
         { current -> current.overriddenDescriptors.map(ValueParameterDescriptor::getOriginal) },
-        { it.declaresDefaultValue() || it.isActualParameterWithAnyExpectedDefault }
+        { it.declaresDefaultValue() || it.isActualParameterWithCorrespondingExpectedDefault }
     )
 }
 

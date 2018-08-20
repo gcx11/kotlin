@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1109
+// EXPECTED_REACHABLE_NODES: 1281
 package foo
 
 fun f(a: Int = 2, b: Int = 3) = a + b

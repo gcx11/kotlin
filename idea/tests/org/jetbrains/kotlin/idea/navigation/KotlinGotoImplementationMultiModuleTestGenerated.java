@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -23,6 +23,11 @@ import java.util.regex.Pattern;
 public class KotlinGotoImplementationMultiModuleTestGenerated extends AbstractKotlinGotoImplementationMultiModuleTest {
     private void runTest(String testDataFilePath) throws Exception {
         KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+    }
+
+    @TestMetadata("actualTypeAliasWithAnonymousSubclass")
+    public void testActualTypeAliasWithAnonymousSubclass() throws Exception {
+        runTest("idea/testData/navigation/implementations/multiModule/actualTypeAliasWithAnonymousSubclass/");
     }
 
     public void testAllFilesPresentInMultiModule() throws Exception {
@@ -57,6 +62,21 @@ public class KotlinGotoImplementationMultiModuleTestGenerated extends AbstractKo
     @TestMetadata("expectClassSuperclassProperty")
     public void testExpectClassSuperclassProperty() throws Exception {
         runTest("idea/testData/navigation/implementations/multiModule/expectClassSuperclassProperty/");
+    }
+
+    @TestMetadata("expectCompanion")
+    public void testExpectCompanion() throws Exception {
+        runTest("idea/testData/navigation/implementations/multiModule/expectCompanion/");
+    }
+
+    @TestMetadata("expectEnumEntry")
+    public void testExpectEnumEntry() throws Exception {
+        runTest("idea/testData/navigation/implementations/multiModule/expectEnumEntry/");
+    }
+
+    @TestMetadata("expectObject")
+    public void testExpectObject() throws Exception {
+        runTest("idea/testData/navigation/implementations/multiModule/expectObject/");
     }
 
     @TestMetadata("suspendFunImpl")

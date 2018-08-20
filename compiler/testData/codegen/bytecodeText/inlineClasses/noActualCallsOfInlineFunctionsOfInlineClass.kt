@@ -1,7 +1,8 @@
 // !LANGUAGE: +InlineClasses
+// IGNORE_BACKEND: JVM_IR
 
 inline class Foo(val x: Int) {
-    inline fun inlineInc(): Foo = Foo(x + 1) // one actual call inside wrapper class Foo
+    inline fun inlineInc(): Foo = Foo(x + 1)
     fun notInlineInc(): Foo = Foo(x + 1)
 
     fun foo() {
@@ -11,8 +12,8 @@ inline class Foo(val x: Int) {
 
 fun test(f: Foo) {
     f.inlineInc().inlineInc().inlineInc()
-    f.notInlineInc() // one here, one inside wrapper class Foo
+    f.notInlineInc() // one here
 }
 
-// 1 INVOKESTATIC Foo\$Erased.inlineInc
-// 2 INVOKESTATIC Foo\$Erased.notInlineInc
+// 0 INVOKESTATIC Foo\.inlineInc
+// 1 INVOKESTATIC Foo\.notInlineInc

@@ -16,22 +16,17 @@
 
 package org.jetbrains.kotlin.idea.run;
 
-import com.intellij.execution.configurations.RunConfiguration;
-import com.intellij.execution.JavaExecutionUtil;
-import com.intellij.execution.JavaRunConfigurationExtensionManager;
-import com.intellij.execution.Location;
-import com.intellij.execution.PsiLocation;
-import com.intellij.execution.RunnerAndConfigurationSettings;
-import com.intellij.execution.RunManager;
-import com.intellij.execution.CommonJavaRunConfigurationParameters;
+import com.intellij.execution.*;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
+import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.junit.InheritorChooser;
 import com.intellij.execution.junit2.info.MethodLocation;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.Condition;
+import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.Ref;
 import com.intellij.psi.*;
 import com.intellij.psi.util.PsiClassUtil;
@@ -47,7 +42,6 @@ import org.jetbrains.kotlin.idea.project.TargetPlatformDetector;
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil;
 import org.jetbrains.kotlin.psi.*;
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 
 import java.util.List;
 
@@ -112,7 +106,7 @@ public class KotlinTestNgConfigurationProducer extends TestNGConfigurationProduc
         Project project = context.getProject();
         PsiElement leaf = location.getPsiElement();
 
-        if (!ProjectRootsUtil.isInProjectOrLibSource(leaf)) {
+        if (!ProjectRootsUtil.isInProjectOrLibSource(leaf, false)) {
             return false;
         }
 
@@ -126,39 +120,14 @@ public class KotlinTestNgConfigurationProducer extends TestNGConfigurationProduc
             return false;
         }
 
-        KtNamedDeclaration declarationToRun = getDeclarationToRun(leaf);
+        Pair<PsiClass, PsiMethod> classAndMethod = getTestClassAndMethod(leaf);
+        if (classAndMethod == null) return false;
 
-        if (declarationToRun instanceof KtNamedFunction) {
-            KtNamedFunction function = (KtNamedFunction) declarationToRun;
+        PsiClass testClass = classAndMethod.getFirst();
+        if (testClass == null) return false;
+        PsiMethod testMethod = classAndMethod.getSecond();
 
-            @SuppressWarnings("unchecked")
-            KtElement owner = PsiTreeUtil.getParentOfType(function, KtFunction.class, KtClass.class);
-
-            if (owner instanceof KtClass) {
-                PsiClass delegate = toLightClass((KtClass) owner);
-                if (delegate != null) {
-                    for (PsiMethod method : delegate.getMethods()) {
-                        if (method.getNavigationElement() == function) {
-                            if (TestNGUtil.hasTest(method)) {
-                                return configure(configuration, location, context, project, delegate, method);
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (declarationToRun instanceof KtClass) {
-            PsiClass delegate = toLightClass((KtClassOrObject) declarationToRun);
-            if (!isTestNGClass(delegate)) {
-                return false;
-            }
-
-            return configure(configuration, location, context, project, delegate, null);
-        }
-
-        return false;
+        return configure(configuration, location, context, project, testClass, testMethod);
     }
 
     @Override
@@ -247,7 +216,7 @@ public class KotlinTestNgConfigurationProducer extends TestNGConfigurationProduc
         }
         configuration.restoreOriginalModule(originalModule);
         configuration.setName(configuration.getName());
-        JavaRunConfigurationExtensionManager.getInstance().extendCreatedConfiguration(configuration, location);
+        JavaRunConfigurationExtensionManagerUtil.getInstance().extendCreatedConfiguration(configuration, location);
         return true;
     }
 
@@ -274,5 +243,40 @@ public class KotlinTestNgConfigurationProducer extends TestNGConfigurationProduc
         }
 
         return tempSingleDeclaration;
+    }
+
+    @Nullable
+    public static Pair<PsiClass, PsiMethod> getTestClassAndMethod(@NotNull PsiElement leaf) {
+        KtNamedDeclaration declarationToRun = getDeclarationToRun(leaf);
+
+        if (declarationToRun instanceof KtNamedFunction) {
+            KtNamedFunction function = (KtNamedFunction) declarationToRun;
+
+            @SuppressWarnings("unchecked")
+            KtElement owner = PsiTreeUtil.getParentOfType(function, KtFunction.class, KtClass.class);
+
+            if (owner instanceof KtClass) {
+                PsiClass delegate = toLightClass((KtClass) owner);
+                if (delegate != null) {
+                    for (PsiMethod method : delegate.getMethods()) {
+                        if (method.getNavigationElement() == function) {
+                            if (TestNGUtil.hasTest(method)) {
+                                return new Pair<>(delegate, method);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (declarationToRun instanceof KtClass) {
+            PsiClass delegate = toLightClass((KtClassOrObject) declarationToRun);
+            if (isTestNGClass(delegate)) {
+                return new Pair<>(delegate, null);
+            }
+        }
+
+        return null;
     }
 }

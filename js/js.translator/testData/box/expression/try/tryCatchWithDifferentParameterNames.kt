@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1114
+// EXPECTED_REACHABLE_NODES: 1285
 package foo
 
 fun bar(e: Exception): String {

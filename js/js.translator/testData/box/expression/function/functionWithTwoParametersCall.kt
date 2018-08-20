@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1110
+// EXPECTED_REACHABLE_NODES: 1281
 package foo
 
 fun sum(param1: Int, param2: Int): Int {

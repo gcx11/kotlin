@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1158
+// EXPECTED_REACHABLE_NODES: 1300
 package foo
 
 import kotlin.reflect.KProperty

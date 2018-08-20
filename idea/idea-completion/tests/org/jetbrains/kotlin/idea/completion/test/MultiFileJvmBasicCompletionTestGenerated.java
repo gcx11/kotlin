@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -72,6 +72,11 @@ public class MultiFileJvmBasicCompletionTestGenerated extends AbstractMultiFileJ
     @TestMetadata("DoNotCompleteWithConstraints")
     public void testDoNotCompleteWithConstraints() throws Exception {
         runTest("idea/idea-completion/testData/basic/multifile/DoNotCompleteWithConstraints/");
+    }
+
+    @TestMetadata("EnhancementFlexibleTypes")
+    public void testEnhancementFlexibleTypes() throws Exception {
+        runTest("idea/idea-completion/testData/basic/multifile/EnhancementFlexibleTypes/");
     }
 
     @TestMetadata("EntriesOfNotImportedEnumFromKotlin")
@@ -352,6 +357,11 @@ public class MultiFileJvmBasicCompletionTestGenerated extends AbstractMultiFileJ
     @TestMetadata("StaticMembersOfNotImportedClassNameConflict")
     public void testStaticMembersOfNotImportedClassNameConflict() throws Exception {
         runTest("idea/idea-completion/testData/basic/multifile/StaticMembersOfNotImportedClassNameConflict/");
+    }
+
+    @TestMetadata("SuspensionPointInMonitor")
+    public void testSuspensionPointInMonitor() throws Exception {
+        runTest("idea/idea-completion/testData/basic/multifile/SuspensionPointInMonitor/");
     }
 
     @TestMetadata("SyntheticExtensionDeprecated")

@@ -19,30 +19,39 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
     companion object {
         const val ID = "preferences.language.Kotlin"
 
-        private fun saveSelectedChannel(channel: Int) {
+        private fun saveSelectedChannel(channelOrdinal: Int) {
             val hosts = UpdateSettings.getInstance().storedPluginHosts
             hosts.removeIf {
                 it.startsWith("https://plugins.jetbrains.com/plugins/") &&
                         (it.endsWith("/6954") || it.endsWith(KotlinPluginUtil.KOTLIN_PLUGIN_ID.idString))
             }
-            when (channel) {
-                EAPChannels.EAP_1_3.uiIndex -> hosts.add(EAPChannels.EAP_1_3.url)
-                EAPChannels.EAP_1_2.uiIndex -> hosts.add(EAPChannels.EAP_1_2.url)
+
+            UpdateChannel.values().find { it.ordinal == channelOrdinal }?.let { eapChannel ->
+                if (eapChannel != UpdateChannel.STABLE) {
+                    hosts.add(eapChannel.url ?: error("Shouldn't add null urls to custom repositories"))
+                }
             }
         }
 
-        enum class EAPChannels(val url: String, val uiIndex: Int) {
-            EAP_1_2("https://plugins.jetbrains.com/plugins/eap-1.2/${KotlinPluginUtil.KOTLIN_PLUGIN_ID.idString}", 1),
-            EAP_1_3("https://plugins.jetbrains.com/plugins/eap-next/${KotlinPluginUtil.KOTLIN_PLUGIN_ID.idString}", 2);
+        enum class UpdateChannel(val url: String?, val title: String) {
+            STABLE(null, "Stable"),
+            EAP("https://plugins.jetbrains.com/plugins/eap/${KotlinPluginUtil.KOTLIN_PLUGIN_ID.idString}", "Early Access Preview 1.3.x"),
+            EAP_NEXT(
+                "https://plugins.jetbrains.com/plugins/eap-next/${KotlinPluginUtil.KOTLIN_PLUGIN_ID.idString}",
+                "Early Access Preview 1.4.x"
+            );
 
-            private val hasChannel: Boolean get() = url in UpdateSettings.getInstance().pluginHosts
-
-            fun indexIfAvailable() = if (hasChannel) uiIndex else null
+            fun isInHosts(): Boolean {
+                if (this == STABLE) return false
+                return url in UpdateSettings.getInstance().pluginHosts
+            }
         }
     }
 
     private val form = ConfigurePluginUpdatesForm()
     private var update: PluginUpdateStatus.Update? = null
+
+    private var savedChannel = -1
 
     private var versionForInstallation: String? = null
 
@@ -51,7 +60,7 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
 
     override fun getId(): String = ID
 
-    override fun getDisplayName(): String = "Kotlin Updates"
+    override fun getDisplayName(): String = "Kotlin"
 
     override fun isModified() = false
 
@@ -108,11 +117,17 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
             }
         }
 
-        val savedChannel: Int = EAPChannels.EAP_1_3.indexIfAvailable() ?: EAPChannels.EAP_1_2.indexIfAvailable() ?: 0
+        form.initChannels(UpdateChannel.values().map { it.title })
+
+        savedChannel = UpdateChannel.values().find { it.isInHosts() }?.ordinal ?: 0
         form.channelCombo.selectedIndex = savedChannel
 
         form.channelCombo.addActionListener {
-            checkForUpdates()
+            val newChannel = form.channelCombo.selectedIndex
+            if (newChannel != savedChannel) {
+                savedChannel = newChannel
+                checkForUpdates()
+            }
         }
 
         checkForUpdates()
@@ -121,7 +136,7 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
     }
 
     private fun checkForUpdates() {
-        saveSettings()
+        saveChannelSettings()
         form.updateCheckProgressIcon.resume()
         form.resetUpdateStatus()
         KotlinPluginUpdater.getInstance().runUpdateCheck{ pluginUpdateStatus ->
@@ -132,7 +147,7 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
             when (pluginUpdateStatus) {
                 PluginUpdateStatus.LatestVersionInstalled -> {
                     form.setUpdateStatus(
-                        "You have the latest version of the plugin (${KotlinPluginUtil.getPluginVersion()}) installed.",
+                        "You have the latest version of the plugin installed.",
                         false
                     )
                 }
@@ -150,13 +165,21 @@ class KotlinUpdatesSettingsConfigurable : SearchableConfigurable, Configurable.N
 
                 is PluginUpdateStatus.CheckFailed ->
                     form.setUpdateStatus("Update check failed: ${pluginUpdateStatus.message}", false)
+
+                is PluginUpdateStatus.Unverified -> {
+                    val version = pluginUpdateStatus.updateStatus.pluginDescriptor.version
+                    val generalLine = "A new version $version is found but it's not verified by ${pluginUpdateStatus.verifierName}."
+                    val reasonLine = pluginUpdateStatus.reason ?: ""
+                    val message = "<html>$generalLine<br/>$reasonLine</html>"
+                    form.setUpdateStatus(message, false)
+                }
             }
 
             false  // do not auto-retry update check
         }
     }
 
-    private fun saveSettings() {
+    private fun saveChannelSettings() {
         saveSelectedChannel(form.channelCombo.selectedIndex)
     }
 }

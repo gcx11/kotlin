@@ -24,11 +24,11 @@ import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.analyzer.ResolverForProjectImpl
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.context.ProjectContext
+import org.jetbrains.kotlin.load.kotlin.PackagePartProvider
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.jvm.JvmAnalyzerFacade
 import org.jetbrains.kotlin.resolve.jvm.JvmPlatformParameters
-import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
 
 fun createResolveSessionForFiles(
         project: Project,
@@ -41,10 +41,14 @@ fun createResolveSessionForFiles(
         "test",
         projectContext, listOf(testModule),
         { ModuleContent(it, syntheticFiles, GlobalSearchScope.allScope(project)) },
-        modulePlatforms = { JvmPlatform.multiTargetPlatform },
         moduleLanguageSettingsProvider = LanguageSettingsProvider.Default,
         resolverForModuleFactoryByPlatform = { JvmAnalyzerFacade },
-        platformParameters = JvmPlatformParameters { testModule }
+        platformParameters = { _ ->
+            JvmPlatformParameters(
+                packagePartProviderFactory = { PackagePartProvider.Empty },
+                moduleByJavaClass = { testModule }
+            )
+        }
     )
     return resolverForProject.resolverForModule(testModule).componentProvider.get<ResolveSession>()
 }

@@ -236,7 +236,7 @@ public class Visibilities {
     public static final Visibility LOCAL = new Visibility("local", false) {
         @Override
         public boolean mustCheckInImports() {
-            throw new IllegalStateException("This method shouldn't be invoked for LOCAL visibility");
+            return true;
         }
 
         @Override
@@ -263,7 +263,7 @@ public class Visibilities {
     public static final Visibility INVISIBLE_FAKE = new Visibility("invisible_fake", false) {
         @Override
         public boolean mustCheckInImports() {
-            throw new IllegalStateException("This method shouldn't be invoked for INVISIBLE_FAKE visibility");
+            return true;
         }
 
         @Override

@@ -1,25 +1,23 @@
+// IGNORE_BACKEND: JVM_IR
 // FILE: inlined.kt
 // COMMON_COROUTINES_TEST
 // WITH_RUNTIME
+// WITH_COROUTINES
 // NO_CHECK_LAMBDA_INLINING
+// CHECK_STATE_MACHINE
 
 import COROUTINES_PACKAGE.intrinsics.*
-
-var i = 0;
-
-suspend fun suspendHere() = suspendCoroutineOrReturn<Unit> {
-    i++
-    COROUTINE_SUSPENDED
-}
+import helpers.*
 
 suspend inline fun crossinlineMe(crossinline c: suspend () -> Unit) {
     val l: suspend () -> Unit = {
-        suspendHere()
-        suspendHere()
-        suspendHere()
-        suspendHere()
-        suspendHere()
+        StateMachineChecker.suspendHere()
+        StateMachineChecker.suspendHere()
+        StateMachineChecker.suspendHere()
+        StateMachineChecker.suspendHere()
+        StateMachineChecker.suspendHere()
     }
+    l()
     l()
 }
 
@@ -27,19 +25,10 @@ suspend inline fun crossinlineMe(crossinline c: suspend () -> Unit) {
 // COMMON_COROUTINES_TEST
 
 import COROUTINES_PACKAGE.*
+import helpers.*
 
 fun builder(c: suspend () -> Unit) {
-    c.startCoroutine(object: Continuation<Unit> {
-        override val context: CoroutineContext
-            get() = EmptyCoroutineContext
-
-        override fun resume(value: Unit) {
-        }
-
-        override fun resumeWithException(exception: Throwable) {
-            throw exception
-        }
-    })
+    c.startCoroutine(CheckStateMachineContinuation)
 }
 
 fun box(): String {
@@ -49,6 +38,6 @@ fun box(): String {
             res = "FAIL 1"
         }
     }
-    if (i != 1) return "FAIL 2"
+    StateMachineChecker.check(numberOfSuspensions = 10)
     return res
 }

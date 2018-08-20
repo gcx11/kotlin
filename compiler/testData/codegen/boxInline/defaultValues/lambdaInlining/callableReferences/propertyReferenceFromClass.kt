@@ -1,5 +1,4 @@
 // FILE: 1.kt
-// LANGUAGE_VERSION: 1.2
 // SKIP_INLINE_CHECK_IN: inlineFun$default
 package test
 

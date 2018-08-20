@@ -17,16 +17,14 @@
 package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.impl.IrUninitializedType
 import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.utils.SmartList
 
 abstract class IrFunctionBase(
@@ -37,8 +35,18 @@ abstract class IrFunctionBase(
     override val visibility: Visibility,
     override val isInline: Boolean,
     override val isExternal: Boolean,
-    override val returnType: KotlinType
-) : IrDeclarationBase(startOffset, endOffset, origin), IrFunction {
+    returnType: IrType
+) :
+    IrDeclarationBase(startOffset, endOffset, origin),
+    IrFunction {
+
+    final override var returnType: IrType = returnType
+        get() = if (field === IrUninitializedType) {
+            error("Return type is not initialized")
+        } else {
+            field
+        }
+
     override val typeParameters: MutableList<IrTypeParameter> = SmartList()
 
     override var dispatchReceiverParameter: IrValueParameter? = null
@@ -46,6 +54,8 @@ abstract class IrFunctionBase(
     override val valueParameters: MutableList<IrValueParameter> = ArrayList()
 
     final override var body: IrBody? = null
+
+    override var metadata: MetadataSource? = null
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
         typeParameters.forEach { it.accept(visitor, data) }

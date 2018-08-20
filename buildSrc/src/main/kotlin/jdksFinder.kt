@@ -8,8 +8,10 @@ import java.io.File
 import net.rubygrapefruit.platform.WindowsRegistry.Key.HKEY_LOCAL_MACHINE
 import org.gradle.internal.os.OperatingSystem
 
-enum class JdkMajorVersion {
-    JDK_16, JDK_17, JDK_18, JDK_9, JDK_10
+enum class JdkMajorVersion(private val mandatory: Boolean = true) {
+    JDK_16, JDK_17, JDK_18, JDK_9, JDK_10(false), JDK_11(false);
+
+    fun isMandatory(): Boolean = mandatory
 }
 
 val jdkAlternativeVarNames = mapOf(JdkMajorVersion.JDK_9 to listOf("JDK_19"))
@@ -133,7 +135,7 @@ fun MutableCollection<JdkId>.discoverJdksOnUnix(project: Project) {
         val installedJdks = File(loc).listFiles { dir ->
             dir.isDirectory &&
             unixConventionalJdkDirRex.containsMatchIn(dir.name) &&
-            File(dir, "bin", "java").isFile
+            fileFrom(dir, "bin", "java").isFile
         } ?: continue
         for (dir in installedJdks) {
             val versionMatch = javaVersionRegex.find(dir.name)
@@ -172,7 +174,7 @@ fun MutableCollection<JdkId>.discoverJdksOnWindows(project: Project) {
                 else {
                     javaHome.takeIf { it.isNotEmpty() }
                             ?.let { File(it) }
-                            ?.takeIf { it.isDirectory && File(it, "bin", "java.exe").isFile }
+                            ?.takeIf { it.isDirectory && fileFrom(it, "bin", "java.exe").isFile }
                             ?.let {
                                 addIfBetter(project, versionMatch.value, jdkKey, it)
                             }

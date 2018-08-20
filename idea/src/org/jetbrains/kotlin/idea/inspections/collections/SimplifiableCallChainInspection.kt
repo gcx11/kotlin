@@ -7,7 +7,9 @@ package org.jetbrains.kotlin.idea.inspections.collections
 
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.js.resolve.JsPlatform
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.psi.qualifiedExpressionVisitor
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -19,13 +21,12 @@ class SimplifiableCallChainInspection : AbstractCallChainChecker() {
         qualifiedExpressionVisitor(fun(expression) {
             val conversion = findQualifiedConversion(expression, conversionGroups) check@{ conversion, firstResolvedCall, _, context ->
                 // Do not apply on maps due to lack of relevant stdlib functions
-                val builtIns = context[BindingContext.EXPRESSION_TYPE_INFO, expression]?.type?.builtIns ?: return@check false
                 val firstReceiverType = firstResolvedCall.extensionReceiver?.type
-                val firstReceiverRawType = firstReceiverType?.constructor?.declarationDescriptor?.defaultType
-                if (firstReceiverRawType != null) {
-                    if (firstReceiverRawType.isSubtypeOf(builtIns.map.defaultType) ||
-                        firstReceiverRawType.isSubtypeOf(builtIns.mutableMap.defaultType)
-                    ) return@check false
+                if (firstReceiverType != null) {
+                    if (conversion.replacement == "mapNotNull" && KotlinBuiltIns.isPrimitiveArray(firstReceiverType)) return@check false
+                    val builtIns = context[BindingContext.EXPRESSION_TYPE_INFO, expression]?.type?.builtIns ?: return@check false
+                    val firstReceiverRawType = firstReceiverType.constructor.declarationDescriptor?.defaultType
+                    if (firstReceiverRawType.isMap(builtIns)) return@check false
                 }
                 if (conversion.replacement.startsWith("joinTo")) {
                     // Function parameter in map must have String result type
@@ -37,14 +38,23 @@ class SimplifiableCallChainInspection : AbstractCallChainChecker() {
                 true
             } ?: return
 
-
+            val replacement = conversion.replacement
             val descriptor = holder.manager.createProblemDescriptor(
                 expression,
                 expression.firstCalleeExpression()!!.textRange.shiftRight(-expression.startOffset),
                 "Call chain on collection type may be simplified",
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 isOnTheFly,
-                SimplifyCallChainFix(conversion.replacement)
+                SimplifyCallChainFix(conversion) { callExpression ->
+                    val lastArgumentName = if (replacement.startsWith("joinTo")) Name.identifier("transform") else null
+                    if (lastArgumentName != null) {
+                        val lastArgument = callExpression.valueArgumentList?.arguments?.singleOrNull()
+                        val argumentExpression = lastArgument?.getArgumentExpression()
+                        if (argumentExpression != null) {
+                            lastArgument.replace(createArgument(argumentExpression, lastArgumentName))
+                        }
+                    }
+                }
             )
             holder.registerProblem(descriptor)
         })

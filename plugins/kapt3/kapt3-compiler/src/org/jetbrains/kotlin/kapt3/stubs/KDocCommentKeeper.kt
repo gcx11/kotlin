@@ -17,7 +17,7 @@
 package org.jetbrains.kotlin.kapt3.stubs
 
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.sun.tools.javac.parser.Tokens
 import com.sun.tools.javac.tree.DCTree
@@ -26,7 +26,7 @@ import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.tree.TreeScanner
 import org.jetbrains.kotlin.descriptors.ConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyAccessorDescriptor
-import org.jetbrains.kotlin.kapt3.KaptContext
+import org.jetbrains.kotlin.kapt3.KaptContextForStubGeneration
 import org.jetbrains.kotlin.kdoc.lexer.KDocTokens
 import org.jetbrains.kotlin.kdoc.psi.api.KDoc
 import org.jetbrains.kotlin.psi.*
@@ -35,7 +35,7 @@ import org.jetbrains.org.objectweb.asm.Opcodes
 import org.jetbrains.org.objectweb.asm.tree.FieldNode
 import org.jetbrains.org.objectweb.asm.tree.MethodNode
 
-class KDocCommentKeeper(private val kaptContext: KaptContext<*>) {
+class KDocCommentKeeper(private val kaptContext: KaptContextForStubGeneration) {
     private val docCommentTable = KaptDocCommentTable()
 
     fun getDocTable(file: JCTree.JCCompilationUnit): DocCommentTable {
@@ -87,7 +87,7 @@ class KDocCommentKeeper(private val kaptContext: KaptContext<*>) {
             && descriptor is PropertyAccessorDescriptor
             && kaptContext.bindingContext[BindingContext.BACKING_FIELD_REQUIRED, descriptor.correspondingProperty] == true
         ) {
-            // Do not place the smae documentation on backing field and property accessors
+            // Do not place documentation on backing field and property accessors
             return
         }
 
@@ -128,13 +128,29 @@ class KDocCommentKeeper(private val kaptContext: KaptContext<*>) {
     }
 
     private fun extractCommentText(docComment: KDoc): String {
-        return docComment.children.dropWhile { it is PsiWhiteSpace || it.isKDocStart() }
-                .dropLastWhile { it is PsiWhiteSpace || it.isKDocEnd() }
-                .joinToString("") { it.text }
+        return buildString {
+            docComment.accept(object : PsiRecursiveElementVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    if (element is LeafPsiElement) {
+                        if (element.isKDocLeadingAsterisk()) {
+                            val indent = takeLastWhile { it == ' ' || it == '\t' }.length
+                            if (indent > 0) {
+                                delete(length - indent, length)
+                            }
+                        } else if (!element.isKDocStart() && !element.isKDocEnd()) {
+                            append(element.text)
+                        }
+                    }
+
+                    super.visitElement(element)
+                }
+            })
+        }.trimIndent().trim()
     }
 
-    private fun PsiElement.isKDocStart() = this is LeafPsiElement && elementType == KDocTokens.START
-    private fun PsiElement.isKDocEnd() = this is LeafPsiElement && elementType == KDocTokens.END
+    private fun LeafPsiElement.isKDocStart() = elementType == KDocTokens.START
+    private fun LeafPsiElement.isKDocEnd() = elementType == KDocTokens.END
+    private fun LeafPsiElement.isKDocLeadingAsterisk() = elementType == KDocTokens.LEADING_ASTERISK
 }
 
 private class KDocComment(val body: String) : Tokens.Comment {

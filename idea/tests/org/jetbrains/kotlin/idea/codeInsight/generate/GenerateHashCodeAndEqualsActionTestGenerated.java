@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -112,6 +112,11 @@ public class GenerateHashCodeAndEqualsActionTestGenerated extends AbstractGenera
     @TestMetadata("nameClash.kt")
     public void testNameClash() throws Exception {
         runTest("idea/testData/codeInsight/generate/equalsWithHashCode/nameClash.kt");
+    }
+
+    @TestMetadata("nestedArray.kt")
+    public void testNestedArray() throws Exception {
+        runTest("idea/testData/codeInsight/generate/equalsWithHashCode/nestedArray.kt");
     }
 
     @TestMetadata("noVars.kt")

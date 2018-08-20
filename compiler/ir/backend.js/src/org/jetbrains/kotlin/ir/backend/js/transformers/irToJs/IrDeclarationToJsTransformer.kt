@@ -6,15 +6,16 @@
 package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
 import org.jetbrains.kotlin.ir.backend.js.utils.JsGenerationContext
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrField
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.js.backend.ast.*
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.js.backend.ast.JsDeclarationScope
+import org.jetbrains.kotlin.js.backend.ast.JsEmpty
+import org.jetbrains.kotlin.js.backend.ast.JsStatement
+import org.jetbrains.kotlin.js.backend.ast.JsVars
 
 class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatement, JsGenerationContext> {
 
     override fun visitSimpleFunction(declaration: IrSimpleFunction, context: JsGenerationContext): JsStatement {
+        if (declaration.descriptor.isExpect) return JsEmpty // TODO: fix it in Psi2Ir
         return declaration.accept(IrFunctionToJsTransformer(), context).makeStmt()
     }
 
@@ -23,16 +24,31 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
     }
 
     override fun visitClass(declaration: IrClass, context: JsGenerationContext): JsStatement {
-        return JsClassGenerator(declaration, context).generate()
+        return JsClassGenerator(
+            declaration,
+            context.newDeclaration(
+                JsDeclarationScope(
+                    context.currentScope,
+                    "scope for class ${declaration.name.asString()}"
+                )
+            )
+        ).generate()
     }
 
     override fun visitField(declaration: IrField, context: JsGenerationContext): JsStatement {
         val fieldName = context.getNameForSymbol(declaration.symbol)
-        val initExpression =
-            declaration.initializer?.accept(IrElementToJsExpressionTransformer(), context) ?: JsPrefixOperation(
-                JsUnaryOperator.VOID,
-                JsIntLiteral(1)
-            )
-        return jsAssignment(JsNameRef(fieldName, JsThisRef()), initExpression).makeStmt()
+
+        if (declaration.isExternal) return JsEmpty
+
+        if (declaration.initializer != null) {
+            val initializer = declaration.initializer!!.accept(IrElementToJsExpressionTransformer(), context)
+            context.staticContext.initializerBlock.statements += jsAssignment(fieldName.makeRef(), initializer).makeStmt()
+        }
+
+        return JsVars(JsVars.JsVar(fieldName))
+    }
+
+    override fun visitVariable(declaration: IrVariable, context: JsGenerationContext): JsStatement {
+        return declaration.accept(IrElementToJsStatementTransformer(), context)
     }
 }

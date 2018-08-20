@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -57,6 +57,16 @@ public class PartialBodyResolveTestGenerated extends AbstractPartialBodyResolveT
     @TestMetadata("ClassInitializerHasNoValue.kt")
     public void testClassInitializerHasNoValue() throws Exception {
         runTest("idea/testData/resolve/partialBodyResolve/ClassInitializerHasNoValue.kt");
+    }
+
+    @TestMetadata("ContractFromBinary.kt")
+    public void testContractFromBinary() throws Exception {
+        runTest("idea/testData/resolve/partialBodyResolve/ContractFromBinary.kt");
+    }
+
+    @TestMetadata("ContractFromSource.kt")
+    public void testContractFromSource() throws Exception {
+        runTest("idea/testData/resolve/partialBodyResolve/ContractFromSource.kt");
     }
 
     @TestMetadata("DeclarationsBefore.kt")

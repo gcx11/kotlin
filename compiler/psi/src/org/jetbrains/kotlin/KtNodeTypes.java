@@ -62,21 +62,19 @@ public interface KtNodeTypes {
     IElementType ANNOTATION_TARGET                  = KtStubElementTypes.ANNOTATION_TARGET;
 
     IElementType TYPE_ARGUMENT_LIST                 = KtStubElementTypes.TYPE_ARGUMENT_LIST;
-    KtNodeType VALUE_ARGUMENT_LIST                 = new KtNodeType("VALUE_ARGUMENT_LIST", KtValueArgumentList.class);
-    KtNodeType VALUE_ARGUMENT                      = new KtNodeType("VALUE_ARGUMENT", KtValueArgument.class);
-    KtNodeType LAMBDA_ARGUMENT                     = new KtNodeType("LAMBDA_ARGUMENT", KtLambdaArgument.class);
-    KtNodeType VALUE_ARGUMENT_NAME                 = new KtNodeType("VALUE_ARGUMENT_NAME", KtValueArgumentName.class);
+    IElementType VALUE_ARGUMENT_LIST                = KtStubElementTypes.VALUE_ARGUMENT_LIST;
+    IElementType VALUE_ARGUMENT                     = KtStubElementTypes.VALUE_ARGUMENT;
+    IElementType LAMBDA_ARGUMENT                    = KtStubElementTypes.LAMBDA_ARGUMENT;
+    IElementType VALUE_ARGUMENT_NAME                = KtStubElementTypes.VALUE_ARGUMENT_NAME;
     IElementType TYPE_REFERENCE                     = KtStubElementTypes.TYPE_REFERENCE;
 
     IElementType USER_TYPE                = KtStubElementTypes.USER_TYPE;
     IElementType DYNAMIC_TYPE             = KtStubElementTypes.DYNAMIC_TYPE;
     IElementType FUNCTION_TYPE            = KtStubElementTypes.FUNCTION_TYPE;
     IElementType FUNCTION_TYPE_RECEIVER   = KtStubElementTypes.FUNCTION_TYPE_RECEIVER;
-    KtNodeType SELF_TYPE     = new KtNodeType("SELF_TYPE", KtSelfType.class);
     IElementType NULLABLE_TYPE            = KtStubElementTypes.NULLABLE_TYPE;
     IElementType TYPE_PROJECTION          = KtStubElementTypes.TYPE_PROJECTION;
 
-    // TODO: review
     IElementType PROPERTY_ACCESSOR       = KtStubElementTypes.PROPERTY_ACCESSOR;
     IElementType INITIALIZER_LIST        = KtStubElementTypes.INITIALIZER_LIST;
     IElementType TYPE_CONSTRAINT_LIST    = KtStubElementTypes.TYPE_CONSTRAINT_LIST;
@@ -85,18 +83,17 @@ public interface KtNodeTypes {
     IElementType CONSTRUCTOR_DELEGATION_CALL = new KtNodeType.KtLeftBoundNodeType("CONSTRUCTOR_DELEGATION_CALL", KtConstructorDelegationCall.class);
     KtNodeType CONSTRUCTOR_DELEGATION_REFERENCE = new KtNodeType.KtLeftBoundNodeType("CONSTRUCTOR_DELEGATION_REFERENCE", KtConstructorDelegationReferenceExpression.class);
 
-    // TODO: Not sure if we need separate NT for each kind of constants
-    KtNodeType NULL               = new KtNodeType("NULL", KtConstantExpression.class);
-    KtNodeType BOOLEAN_CONSTANT   = new KtNodeType("BOOLEAN_CONSTANT", KtConstantExpression.class);
-    KtNodeType FLOAT_CONSTANT     = new KtNodeType("FLOAT_CONSTANT", KtConstantExpression.class);
-    KtNodeType CHARACTER_CONSTANT = new KtNodeType("CHARACTER_CONSTANT", KtConstantExpression.class);
-    KtNodeType INTEGER_CONSTANT   = new KtNodeType("INTEGER_CONSTANT", KtConstantExpression.class);
+    IElementType NULL               = KtStubElementTypes.NULL;
+    IElementType BOOLEAN_CONSTANT   = KtStubElementTypes.BOOLEAN_CONSTANT;
+    IElementType FLOAT_CONSTANT     = KtStubElementTypes.FLOAT_CONSTANT;
+    IElementType CHARACTER_CONSTANT = KtStubElementTypes.CHARACTER_CONSTANT;
+    IElementType INTEGER_CONSTANT   = KtStubElementTypes.INTEGER_CONSTANT;
 
-    KtNodeType STRING_TEMPLATE    = new KtNodeType("STRING_TEMPLATE", KtStringTemplateExpression.class);
-    KtNodeType LONG_STRING_TEMPLATE_ENTRY = new KtNodeType("LONG_STRING_TEMPLATE_ENTRY", KtBlockStringTemplateEntry.class);
-    KtNodeType SHORT_STRING_TEMPLATE_ENTRY = new KtNodeType("SHORT_STRING_TEMPLATE_ENTRY", KtSimpleNameStringTemplateEntry.class);
-    KtNodeType LITERAL_STRING_TEMPLATE_ENTRY = new KtNodeType("LITERAL_STRING_TEMPLATE_ENTRY", KtLiteralStringTemplateEntry.class);
-    KtNodeType ESCAPE_STRING_TEMPLATE_ENTRY = new KtNodeType("ESCAPE_STRING_TEMPLATE_ENTRY", KtEscapeStringTemplateEntry.class);
+    IElementType STRING_TEMPLATE               = KtStubElementTypes.STRING_TEMPLATE;
+    IElementType LONG_STRING_TEMPLATE_ENTRY    = KtStubElementTypes.LONG_STRING_TEMPLATE_ENTRY;
+    IElementType SHORT_STRING_TEMPLATE_ENTRY   = KtStubElementTypes.SHORT_STRING_TEMPLATE_ENTRY;
+    IElementType LITERAL_STRING_TEMPLATE_ENTRY = KtStubElementTypes.LITERAL_STRING_TEMPLATE_ENTRY;
+    IElementType ESCAPE_STRING_TEMPLATE_ENTRY  = KtStubElementTypes.ESCAPE_STRING_TEMPLATE_ENTRY;
 
     KtNodeType PARENTHESIZED             = new KtNodeType("PARENTHESIZED", KtParenthesizedExpression.class);
     KtNodeType RETURN                    = new KtNodeType("RETURN", KtReturnExpression.class);
@@ -133,7 +130,7 @@ public interface KtNodeTypes {
     KtNodeType SUPER_EXPRESSION          = new KtNodeType("SUPER_EXPRESSION", KtSuperExpression.class);
     KtNodeType BINARY_EXPRESSION         = new KtNodeType("BINARY_EXPRESSION", KtBinaryExpression.class);
     KtNodeType BINARY_WITH_TYPE          = new KtNodeType("BINARY_WITH_TYPE", KtBinaryExpressionWithTypeRHS.class);
-    KtNodeType IS_EXPRESSION = new KtNodeType("IS_EXPRESSION", KtIsExpression.class); // TODO:
+    KtNodeType IS_EXPRESSION = new KtNodeType("IS_EXPRESSION", KtIsExpression.class);
     KtNodeType PREFIX_EXPRESSION         = new KtNodeType("PREFIX_EXPRESSION", KtPrefixExpression.class);
     KtNodeType POSTFIX_EXPRESSION        = new KtNodeType("POSTFIX_EXPRESSION", KtPostfixExpression.class);
     KtNodeType LABELED_EXPRESSION         = new KtNodeType("LABELED_EXPRESSION", KtLabeledExpression.class);

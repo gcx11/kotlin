@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1127
+// EXPECTED_REACHABLE_NODES: 1297
 package foo
 
 open class A(var msg:String) {

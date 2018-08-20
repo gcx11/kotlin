@@ -9,13 +9,16 @@ import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.DebuggerManagerThreadImpl
 import com.intellij.debugger.engine.events.DebuggerCommandImpl
 import com.intellij.debugger.impl.DebuggerContextImpl
-import com.intellij.debugger.jdi.LocalVariableProxyImpl
 import com.intellij.psi.PsiElement
 import com.sun.jdi.*
 import com.sun.tools.jdi.LocalVariableImpl
 import org.jetbrains.kotlin.codegen.binding.CodegenBinding
+import org.jetbrains.kotlin.codegen.binding.CodegenBinding.asmTypeForAnonymousClass
 import org.jetbrains.kotlin.codegen.coroutines.DO_RESUME_METHOD_NAME
+import org.jetbrains.kotlin.codegen.coroutines.INVOKE_SUSPEND_METHOD_NAME
 import org.jetbrains.kotlin.codegen.coroutines.continuationAsmTypes
+import org.jetbrains.kotlin.codegen.inline.KOTLIN_STRATA_NAME
+import org.jetbrains.kotlin.idea.KotlinFileTypeFactory
 import org.jetbrains.kotlin.idea.codeInsight.CodeInsightUtils
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches
 import org.jetbrains.kotlin.idea.refactoring.getLineEndOffset
@@ -26,17 +29,23 @@ import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.inline.InlineUtil
+import org.jetbrains.org.objectweb.asm.Type as AsmType
 import java.util.*
 
-fun isInsideInlineFunctionBody(visibleVariables: List<LocalVariableProxyImpl>): Boolean {
-    return visibleVariables.any { it.name().startsWith(JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_FUNCTION) }
+fun Location.isInKotlinSources(): Boolean {
+    val declaringType = declaringType()
+    val fileExtension = declaringType.safeSourceName()?.substringAfterLast('.')?.toLowerCase() ?: ""
+    return fileExtension in KotlinFileTypeFactory.KOTLIN_EXTENSIONS || declaringType.containsKotlinStrata()
 }
 
-fun numberOfInlinedFunctions(visibleVariables: List<LocalVariableProxyImpl>): Int {
-    return visibleVariables.count { it.name().startsWith(JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_FUNCTION) }
-}
+fun ReferenceType.containsKotlinStrata() = availableStrata().contains(KOTLIN_STRATA_NAME)
 
-fun isInsideInlineArgument(inlineArgument: KtFunction, location: Location, debugProcess: DebugProcessImpl): Boolean {
+fun isInsideInlineArgument(
+    inlineArgument: KtFunction,
+    location: Location,
+    debugProcess: DebugProcessImpl,
+    bindingContext: BindingContext = KotlinDebuggerCaches.getOrCreateTypeMapper(inlineArgument).bindingContext
+): Boolean {
     val visibleVariables = location.visibleVariables(debugProcess)
     val markerLocalVariables = visibleVariables.filter { it.name().startsWith(JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_ARGUMENT) }
 
@@ -45,10 +54,19 @@ fun isInsideInlineArgument(inlineArgument: KtFunction, location: Location, debug
     val functionName = runReadAction { functionNameByArgument(inlineArgument, context) }
 
     return markerLocalVariables
-            .map { it.name() }
-            .any { variableName ->
-                lambdaOrdinalByLocalVariable(variableName) == lambdaOrdinal && functionNameByLocalVariable(variableName) == functionName
+        .map { it.name().drop(JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_ARGUMENT.length) }
+        .any { variableName ->
+            if (variableName.startsWith("-")) {
+                val lambdaClassName = asmTypeForAnonymousClass(bindingContext, inlineArgument)
+                    .internalName.substringAfterLast("/")
+
+                variableName == "-$functionName-$lambdaClassName"
+            } else {
+                // For Kotlin up to 1.3.10
+                lambdaOrdinalByLocalVariable(variableName) == lambdaOrdinal
+                        && functionNameByLocalVariable(variableName) == functionName
             }
+        }
 }
 
 fun <T : Any> DebugProcessImpl.invokeInManagerThread(f: (DebuggerContextImpl) -> T?): T? {
@@ -108,7 +126,7 @@ private class MockStackFrame(private val location: Location, private val vm: Vir
 
     private fun createVisibleVariables() {
         if (visibleVariables == null) {
-            val allVariables = location.method().variables()
+            val allVariables = location.method().safeVariables() ?: emptyList()
             val map = HashMap<String, LocalVariable>(allVariables.size)
 
             for (allVariable in allVariables) {
@@ -143,7 +161,8 @@ private class MockStackFrame(private val location: Location, private val vm: Vir
     override fun virtualMachine() = vm
 }
 
-private val DO_RESUME_SIGNATURE = "(Ljava/lang/Object;Ljava/lang/Throwable;)Ljava/lang/Object;"
+private const val DO_RESUME_SIGNATURE = "(Ljava/lang/Object;Ljava/lang/Throwable;)Ljava/lang/Object;"
+private const val INVOKE_SUSPEND_SIGNATURE = "(Ljava/lang/Object;)Ljava/lang/Object;"
 
 fun isInSuspendMethod(location: Location): Boolean {
     val method = location.method()
@@ -151,7 +170,8 @@ fun isInSuspendMethod(location: Location): Boolean {
 
     for (continuationAsmType in continuationAsmTypes()) {
         if (signature.contains(continuationAsmType.toString()) ||
-            (method.name() == DO_RESUME_METHOD_NAME && signature == DO_RESUME_SIGNATURE)
+            (method.name() == DO_RESUME_METHOD_NAME && signature == DO_RESUME_SIGNATURE) ||
+            (method.name() == INVOKE_SUSPEND_METHOD_NAME && signature == INVOKE_SUSPEND_SIGNATURE)
         ) return true
     }
     return false
@@ -176,7 +196,7 @@ fun isOnSuspendReturnOrReenter(location: Location): Boolean {
 }
 
 fun isLastLineLocationInMethod(location: Location): Boolean {
-    val knownLines = location.method().allLineLocations().map { it.lineNumber() }.filter { it != -1 }
+    val knownLines = location.method().safeAllLineLocations().map { it.lineNumber() }.filter { it != -1 }
     if (knownLines.isEmpty()) {
         return false
     }
@@ -185,7 +205,7 @@ fun isLastLineLocationInMethod(location: Location): Boolean {
 }
 
 fun isOneLineMethod(location: Location): Boolean {
-    val allLineLocations = location.method().allLineLocations()
+    val allLineLocations = location.method().safeAllLineLocations()
     val firstLine = allLineLocations.firstOrNull()?.lineNumber()
     val lastLine = allLineLocations.lastOrNull()?.lineNumber()
 
@@ -228,3 +248,37 @@ fun findCallByEndToken(element: PsiElement): KtCallExpression? {
         else -> null
     }
 }
+
+fun Type.isSubtype(className: String): Boolean = isSubtype(AsmType.getObjectType(className))
+
+fun Type.isSubtype(type: AsmType): Boolean {
+    if (this.signature() == type.descriptor) {
+        return true
+    }
+
+    if (type.sort != AsmType.OBJECT || this !is ClassType) {
+        return false
+    }
+
+    val superTypeName = type.className
+
+    if (allInterfaces().any { it.name() == superTypeName }) {
+        return true
+    }
+
+    var superClass = superclass()
+    while (superClass != null) {
+        if (superClass.name() == superTypeName) {
+            return true
+        }
+        superClass = superClass.superclass()
+    }
+
+    return false
+}
+
+val DebuggerContextImpl.canRunEvaluation: Boolean
+    get() = debugProcess?.canRunEvaluation ?: false
+
+val DebugProcessImpl.canRunEvaluation: Boolean
+    get() = suspendManager.pausedContext != null

@@ -5,8 +5,9 @@
 
 package kotlin.internal
 
-import kotlin.*
 import java.util.regex.MatchResult
+import kotlin.random.FallbackThreadLocalRandom
+import kotlin.random.Random
 
 internal open class PlatformImplementations {
 
@@ -17,6 +18,8 @@ internal open class PlatformImplementations {
     public open fun getMatchResultNamedGroup(matchResult: MatchResult, name: String): MatchGroup? {
         throw UnsupportedOperationException("Retrieving groups by name is not supported on this platform.")
     }
+
+    public open fun defaultPlatformRandom(): Random = FallbackThreadLocalRandom()
 }
 
 
@@ -25,23 +28,34 @@ internal val IMPLEMENTATIONS: PlatformImplementations = run {
     val version = getJavaVersion()
     if (version >= 0x10008) {
         try {
-            return@run Class.forName("kotlin.internal.jdk8.JDK8PlatformImplementations").newInstance() as PlatformImplementations
+            return@run castToBaseType<PlatformImplementations>(Class.forName("kotlin.internal.jdk8.JDK8PlatformImplementations").newInstance())
         } catch (e: ClassNotFoundException) { }
         try {
-            return@run Class.forName("kotlin.internal.JRE8PlatformImplementations").newInstance() as PlatformImplementations
+            return@run castToBaseType<PlatformImplementations>(Class.forName("kotlin.internal.JRE8PlatformImplementations").newInstance())
         } catch (e: ClassNotFoundException) { }
     }
 
     if (version >= 0x10007) {
         try {
-            return@run Class.forName("kotlin.internal.jdk7.JDK7PlatformImplementations").newInstance() as PlatformImplementations
+            return@run castToBaseType<PlatformImplementations>(Class.forName("kotlin.internal.jdk7.JDK7PlatformImplementations").newInstance())
         } catch (e: ClassNotFoundException) { }
         try {
-            return@run Class.forName("kotlin.internal.JRE7PlatformImplementations").newInstance() as PlatformImplementations
+            return@run castToBaseType<PlatformImplementations>(Class.forName("kotlin.internal.JRE7PlatformImplementations").newInstance())
         } catch (e: ClassNotFoundException) { }
     }
 
     PlatformImplementations()
+}
+
+@kotlin.internal.InlineOnly
+private inline fun <reified T : Any> castToBaseType(instance: Any): T {
+    try {
+        return instance as T
+    } catch (e: ClassCastException) {
+        val instanceCL = instance.javaClass.classLoader
+        val baseTypeCL = T::class.java.classLoader
+        throw ClassCastException("Instance classloader: $instanceCL, base type classloader: $baseTypeCL").initCause(e)
+    }
 }
 
 private fun getJavaVersion(): Int {

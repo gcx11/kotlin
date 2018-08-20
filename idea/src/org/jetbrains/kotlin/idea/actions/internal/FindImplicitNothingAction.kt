@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.builtins.getReturnTypeFromFunctionType
 import org.jetbrains.kotlin.builtins.isFunctionType
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
+import org.jetbrains.kotlin.idea.util.application.progressIndicatorNullable
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
@@ -62,10 +63,10 @@ class FindImplicitNothingAction : AnAction() {
     }
 
     private fun find(files: Collection<KtFile>, project: Project) {
-        val progressIndicator = ProgressManager.getInstance().progressIndicator
+        val progressIndicator = ProgressManager.getInstance().progressIndicatorNullable
         val found = ArrayList<KtCallExpression>()
         for ((i, file) in files.withIndex()) {
-            progressIndicator?.text = "Scanning files: $i of ${files.size} file. ${found.size} occurences found"
+            progressIndicator?.text = "Scanning files: $i of ${files.size} file. ${found.size} occurrences found"
             progressIndicator?.text2 = file.virtualFile.path
 
             val resolutionFacade = file.getResolutionFacade()
@@ -134,14 +135,8 @@ class FindImplicitNothingAction : AnAction() {
     }
 
     override fun update(e: AnActionEvent) {
-        if (!ApplicationManager.getApplication().isInternal) {
-            e.presentation.isVisible = false
-            e.presentation.isEnabled = false
-        }
-        else {
-            e.presentation.isVisible = true
-            e.presentation.isEnabled = selectedKotlinFiles(e).any()
-        }
+        e.presentation.isVisible = ApplicationManager.getApplication().isInternal
+        e.presentation.isEnabled = ApplicationManager.getApplication().isInternal
     }
 
     private fun selectedKotlinFiles(e: AnActionEvent): Sequence<KtFile> {

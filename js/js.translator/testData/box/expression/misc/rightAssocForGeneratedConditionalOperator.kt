@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1115
+// EXPECTED_REACHABLE_NODES: 1283
 // http://youtrack.jetbrains.com/issue/KT-5320
 // KT-5320 Invalid JS code generated for typecast inside ternary operator
 

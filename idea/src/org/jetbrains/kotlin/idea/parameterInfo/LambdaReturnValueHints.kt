@@ -6,7 +6,9 @@
 package org.jetbrains.kotlin.idea.parameterInfo
 
 import com.intellij.codeInsight.hints.InlayInfo
+import com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.intentions.branchedTransformations.isOneLiner
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
@@ -14,12 +16,23 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsResultOfLambda
 
 fun provideLambdaReturnValueHints(expression: KtExpression): List<InlayInfo> {
-    if (expression is KtIfExpression || expression is KtWhenExpression || expression is KtBlockExpression) {
+    if (expression is KtWhenExpression || expression is KtBlockExpression) {
         return emptyList()
     }
 
-    val parent = expression.parent
-    if (parent is KtDotQualifiedExpression || parent is KtSafeQualifiedExpression || parent is KtBinaryExpression) {
+    if (expression is KtIfExpression && !expression.isOneLiner()) {
+        return emptyList()
+    }
+
+    if (expression.getParentOfType<KtIfExpression>(true)?.isOneLiner() == true) {
+        return emptyList()
+    }
+
+    if (!KtPsiUtil.isStatement(expression)) {
+        if (!allowLabelOnExpressionPart(expression)) {
+            return emptyList()
+        }
+    } else if (forceLabelOnExpressionPart(expression)) {
         return emptyList()
     }
 
@@ -48,4 +61,32 @@ private fun getNameOfFunctionThatTakesLambda(expression: KtExpression): String? 
         return (callExpression.calleeExpression as? KtNameReferenceExpression)?.getReferencedName()
     }
     return null
+}
+
+private fun allowLabelOnExpressionPart(expression: KtExpression): Boolean {
+    val parent = expression.parent as? KtExpression ?: return false
+    return expression == expressionStatementPart(parent)
+}
+
+private fun forceLabelOnExpressionPart(expression: KtExpression): Boolean {
+    return expressionStatementPart(expression) != null
+}
+
+private fun expressionStatementPart(expression: KtExpression): KtExpression? {
+    val splitPart: KtExpression = when (expression) {
+        is KtAnnotatedExpression -> expression.baseExpression
+        is KtLabeledExpression -> expression.baseExpression
+        else -> null
+    } ?: return null
+
+    if (!isNewLineBeforeExpression(splitPart)) {
+        return null
+    }
+
+    return splitPart
+}
+
+private fun isNewLineBeforeExpression(expression: KtExpression): Boolean {
+    val whiteSpace = expression.node.treePrev?.psi as? PsiWhiteSpace ?: return false
+    return whiteSpace.text.contains("\n")
 }

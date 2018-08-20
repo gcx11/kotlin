@@ -1,23 +1,11 @@
 /*
- * Copyright 2010-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.idea.caches.resolve
 
 import com.intellij.openapi.module.Module
-import org.jetbrains.kotlin.codegen.forTestCompile.ForTestCompileRuntime
 import org.jetbrains.kotlin.idea.test.PluginTestCaseBase
 import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.jetbrains.kotlin.test.MockLibraryUtil
@@ -30,7 +18,7 @@ class Java9MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
 
     fun testSimpleModuleExportsPackage() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testSimpleLibraryExportsPackage() {
@@ -42,22 +30,22 @@ class Java9MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
         )
 
         module("main").addLibrary(library, "library")
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testNamedDependsOnUnnamed() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testUnnamedDependsOnNamed() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testDeclarationKinds() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testExportsTo() {
@@ -65,17 +53,17 @@ class Java9MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
         module("first").addDependency(d)
         module("second").addDependency(d)
         module("unnamed").addDependency(d)
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testExportedPackageIsInaccessibleWithoutRequires() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testTypealiasToUnexported() {
         module("main").addDependency(module("dependency"))
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 
     fun testCyclicDependency() {
@@ -83,6 +71,6 @@ class Java9MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
         val b = module("moduleB")
         val c = module("moduleC")
         module("main").addDependency(a).addDependency(b).addDependency(c)
-        checkHighlightingInAllFiles()
+        checkHighlightingInProject()
     }
 }

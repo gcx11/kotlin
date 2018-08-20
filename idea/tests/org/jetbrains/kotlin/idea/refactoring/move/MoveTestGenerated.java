@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -477,6 +477,21 @@ public class MoveTestGenerated extends AbstractMoveTest {
     @TestMetadata("kotlin/moveTopLevelDeclarations/implicitInvokeCalls/differentTarget/differentTarget.test")
     public void testKotlin_moveTopLevelDeclarations_implicitInvokeCalls_differentTarget_DifferentTarget() throws Exception {
         runTest("idea/testData/refactoring/move/kotlin/moveTopLevelDeclarations/implicitInvokeCalls/differentTarget/differentTarget.test");
+    }
+
+    @TestMetadata("kotlin/moveTopLevelDeclarations/misc/classFromKtsToKt/classFromKtsToKt.test")
+    public void testKotlin_moveTopLevelDeclarations_misc_classFromKtsToKt_ClassFromKtsToKt() throws Exception {
+        runTest("idea/testData/refactoring/move/kotlin/moveTopLevelDeclarations/misc/classFromKtsToKt/classFromKtsToKt.test");
+    }
+
+    @TestMetadata("kotlin/moveTopLevelDeclarations/misc/classFromKtsToKts/classFromKtsToKts.test")
+    public void testKotlin_moveTopLevelDeclarations_misc_classFromKtsToKts_ClassFromKtsToKts() throws Exception {
+        runTest("idea/testData/refactoring/move/kotlin/moveTopLevelDeclarations/misc/classFromKtsToKts/classFromKtsToKts.test");
+    }
+
+    @TestMetadata("kotlin/moveTopLevelDeclarations/misc/classFromKtToKts/classFromKtToKts.test")
+    public void testKotlin_moveTopLevelDeclarations_misc_classFromKtToKts_ClassFromKtToKts() throws Exception {
+        runTest("idea/testData/refactoring/move/kotlin/moveTopLevelDeclarations/misc/classFromKtToKts/classFromKtToKts.test");
     }
 
     @TestMetadata("kotlin/moveTopLevelDeclarations/misc/classWithInitializer/delegateInObject.test")

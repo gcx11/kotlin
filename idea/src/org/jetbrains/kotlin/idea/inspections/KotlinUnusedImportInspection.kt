@@ -41,11 +41,13 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.PsiUtilBase
 import com.intellij.util.DocumentUtil
+import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.core.targetDescriptors
 import org.jetbrains.kotlin.idea.imports.KotlinImportOptimizer
 import org.jetbrains.kotlin.idea.imports.OptimizedImportsBuilder
 import org.jetbrains.kotlin.idea.imports.importableFqName
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
+import org.jetbrains.kotlin.idea.util.application.progressIndicatorNullable
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCodeFragment
 import org.jetbrains.kotlin.psi.KtFile
@@ -60,7 +62,7 @@ class KotlinUnusedImportInspection : AbstractKotlinInspection() {
     companion object {
         fun analyzeImports(file: KtFile): ImportData? {
             if (file is KtCodeFragment) return null
-            if (!ProjectRootsUtil.isInProjectSource(file)) return null
+            if (!ProjectRootsUtil.isInProjectSource(file, true)) return null
             if (file.importDirectives.isEmpty()) return null
 
             val optimizerData = KotlinImportOptimizer.collectDescriptorsToImport(file)
@@ -90,6 +92,7 @@ class KotlinUnusedImportInspection : AbstractKotlinInspection() {
             val importPaths = HashSet<ImportPath>(directives.size)
             val unusedImports = ArrayList<KtImportDirective>()
 
+            val resolutionFacade = file.getResolutionFacade()
             for (directive in directives) {
                 val importPath = directive.importPath ?: continue
                 if (importPath.alias != null) continue // highlighting of unused alias imports not supported yet
@@ -97,11 +100,13 @@ class KotlinUnusedImportInspection : AbstractKotlinInspection() {
                 val isUsed = when {
                     !importPaths.add(importPath) -> false
                     importPath.isAllUnder -> importPath.fqName in parentFqNames
-                    else -> importPath.fqName in fqNames
+                    importPath.fqName in fqNames -> true
+                    // case for type alias
+                    else -> directive.targetDescriptors(resolutionFacade).firstOrNull()?.let { it.importableFqName in fqNames } ?: false
                 }
 
                 if (!isUsed) {
-                    if (directive.targetDescriptors().isEmpty()) continue // do not highlight unresolved imports as unused
+                    if (directive.targetDescriptors(resolutionFacade).isEmpty()) continue // do not highlight unresolved imports as unused
                     unusedImports += directive
                 }
             }
@@ -143,7 +148,7 @@ class KotlinUnusedImportInspection : AbstractKotlinInspection() {
         val optimizedImports = KotlinImportOptimizer.prepareOptimizedImports(file, data) ?: return // return if already optimized
 
         // unwrap progress indicator
-        val progress = generateSequence(ProgressManager.getInstance().progressIndicator) {
+        val progress = generateSequence(ProgressManager.getInstance().progressIndicatorNullable) {
             (it as? ProgressWrapper)?.originalProgressIndicator
         }.last() as DaemonProgressIndicator
         val highlightingSession = HighlightingSessionImpl.getHighlightingSession(file, progress)
@@ -194,14 +199,14 @@ class KotlinUnusedImportInspection : AbstractKotlinInspection() {
 
         val document = editor.document
         var hasErrors = false
-        DaemonCodeAnalyzerEx.processHighlights(document, project, HighlightSeverity.ERROR, 0, document.textLength, { highlightInfo ->
+        DaemonCodeAnalyzerEx.processHighlights(document, project, HighlightSeverity.ERROR, 0, document.textLength) { highlightInfo ->
             if (!importsRange.containsRange(highlightInfo.startOffset, highlightInfo.endOffset)) {
                 hasErrors = true
                 false
             } else {
                 true
             }
-        })
+        }
         if (hasErrors) return false
 
         return DaemonListeners.canChangeFileSilently(file)

@@ -16,24 +16,21 @@
 
 package org.jetbrains.kotlin.ir.util
 
-import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.SourceManager
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
-import org.jetbrains.kotlin.renderer.AnnotationArgumentsRenderingPolicy
-import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.utils.Printer
 
-fun IrElement.dump(): String {
-    val sb = StringBuilder()
-    accept(DumpIrTreeVisitor(sb), "")
-    return sb.toString()
-}
+fun IrElement.dump(): String =
+    StringBuilder().also { sb ->
+        accept(DumpIrTreeVisitor(sb), "")
+    }.toString()
 
 fun IrFile.dumpTreesFromLineNumber(lineNumber: Int): String {
     val sb = StringBuilder()
@@ -41,16 +38,13 @@ fun IrFile.dumpTreesFromLineNumber(lineNumber: Int): String {
     return sb.toString()
 }
 
-class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
+class DumpIrTreeVisitor(
+    out: Appendable
+) : IrElementVisitor<Unit, String> {
+
     private val printer = Printer(out, "  ")
     private val elementRenderer = RenderIrElementVisitor()
-
-    companion object {
-        val ANNOTATIONS_RENDERER = DescriptorRenderer.withOptions {
-            verbose = true
-            annotationArgumentsRenderingPolicy = AnnotationArgumentsRenderingPolicy.UNLESS_EMPTY
-        }
-    }
+    private fun IrType.render() = elementRenderer.renderType(this)
 
     override fun visitElement(element: IrElement, data: String) {
         element.dumpLabeledElementWith(data) {
@@ -64,20 +58,11 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
     override fun visitModuleFragment(declaration: IrModuleFragment, data: String) {
         declaration.dumpLabeledElementWith(data) {
             declaration.files.dumpElements()
-            declaration.externalPackageFragments.dumpElements()
         }
     }
 
     override fun visitFile(declaration: IrFile, data: String) {
         declaration.dumpLabeledElementWith(data) {
-            if (declaration.fileAnnotations.isNotEmpty()) {
-                printer.println("fileAnnotations:")
-                indented {
-                    declaration.fileAnnotations.forEach {
-                        printer.println(ANNOTATIONS_RENDERER.renderAnnotation(it))
-                    }
-                }
-            }
             dumpAnnotations(declaration)
             declaration.declarations.dumpElements()
         }
@@ -87,7 +72,6 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
         declaration.dumpLabeledElementWith(data) {
             dumpAnnotations(declaration)
             declaration.thisReceiver?.accept(this, "\$this")
-            declaration.superClasses.renderDeclarationElementsOrDescriptors("superClasses")
             declaration.typeParameters.dumpElements()
             declaration.declarations.dumpElements()
         }
@@ -96,14 +80,16 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
     override fun visitTypeParameter(declaration: IrTypeParameter, data: String) {
         declaration.dumpLabeledElementWith(data) {
             dumpAnnotations(declaration)
-            declaration.superClassifiers.renderDeclarationElementsOrDescriptors("superClassifiers")
         }
     }
 
     override fun visitSimpleFunction(declaration: IrSimpleFunction, data: String) {
         declaration.dumpLabeledElementWith(data) {
             dumpAnnotations(declaration)
-            declaration.overriddenSymbols.renderDeclarationElementsOrDescriptors("overridden")
+            declaration.correspondingPropertySymbol?.dumpInternal("correspondingProperty")
+            declaration.overriddenSymbols.dumpItems<IrSymbol>("overridden") {
+                it.dump()
+            }
             declaration.typeParameters.dumpElements()
             declaration.dispatchReceiverParameter?.accept(this, "\$this")
             declaration.extensionReceiverParameter?.accept(this, "\$receiver")
@@ -113,33 +99,17 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
     }
 
     private fun dumpAnnotations(element: IrAnnotationContainer) {
-        if (element.annotations.isNotEmpty()) {
-            indented("annotations") {
-                element.annotations.dumpElements()
-            }
+        element.annotations.dumpItems("annotations") {
+            element.annotations.dumpElements()
         }
     }
 
-    private fun Collection<IrSymbol>.renderDeclarationElementsOrDescriptors(caption: String) {
-        if (isNotEmpty()) {
-            indented(caption) {
-                for (symbol in this) {
-                    symbol.renderDeclarationElementOrDescriptor()
-                }
+    private fun IrSymbol.dump(label: String? = null) =
+        printer.println(
+            elementRenderer.renderSymbolReference(this).let {
+                if (label != null) "$label: $it" else it
             }
-        }
-    }
-
-    private fun IrSymbol.renderDeclarationElementOrDescriptor(label: String? = null) {
-        when {
-            isBound ->
-                owner.render(label)
-            label != null ->
-                printer.println("$label: ", "UNBOUND: ", DescriptorRenderer.COMPACT.render(descriptor))
-            else ->
-                printer.println("UNBOUND: ", DescriptorRenderer.COMPACT.render(descriptor))
-        }
-    }
+        )
 
     override fun visitConstructor(declaration: IrConstructor, data: String) {
         declaration.dumpLabeledElementWith(data) {
@@ -154,10 +124,19 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
     override fun visitProperty(declaration: IrProperty, data: String) {
         declaration.dumpLabeledElementWith(data) {
             dumpAnnotations(declaration)
-            declaration.typeParameters.dumpElements()
             declaration.backingField?.accept(this, "")
             declaration.getter?.accept(this, "")
             declaration.setter?.accept(this, "")
+        }
+    }
+
+    override fun visitField(declaration: IrField, data: String) {
+        declaration.dumpLabeledElementWith(data) {
+            dumpAnnotations(declaration)
+            declaration.overriddenSymbols.dumpItems("overridden") {
+                it.dump()
+            }
+            declaration.initializer?.accept(this, "")
         }
     }
 
@@ -185,35 +164,95 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
             dumpTypeArguments(expression)
             expression.dispatchReceiver?.accept(this, "\$this")
             expression.extensionReceiver?.accept(this, "\$receiver")
-            for (valueParameter in expression.descriptor.valueParameters) {
-                expression.getValueArgument(valueParameter.index)?.accept(this, valueParameter.name.asString())
+            val valueParameterNames = expression.getValueParameterNames(expression.valueArgumentsCount)
+            for (index in 0 until expression.valueArgumentsCount) {
+                expression.getValueArgument(index)?.accept(this, valueParameterNames[index])
             }
         }
     }
 
     private fun dumpTypeArguments(expression: IrMemberAccessExpression) {
+        val typeParameterNames = expression.getTypeParameterNames(expression.typeArgumentsCount)
         for (index in 0 until expression.typeArgumentsCount) {
             printer.println(
-                "${expression.descriptor.renderTypeParameter(index)}: ${expression.renderTypeArgument(index)}"
+                "<${typeParameterNames[index]}>: ${expression.renderTypeArgument(index)}"
             )
         }
     }
 
-    private fun CallableDescriptor.renderTypeParameter(index: Int): String {
-        val typeParameter = original.typeParameters.getOrNull(index)
-        return if (typeParameter != null)
-            DescriptorRenderer.ONLY_NAMES_WITH_SHORT_TYPES.render(typeParameter)
+    private fun IrMemberAccessExpression.getTypeParameterNames(expectedCount: Int): List<String> =
+        if (this is IrDeclarationReference && symbol.isBound)
+            symbol.owner.getTypeParameterNames(expectedCount)
+        else if (this is IrCallableReference)
+            getPlaceholderParameterNames(expectedCount) // TODO IrCallableReference should be an IrDeclarationReference
         else
-            "<`$index>"
+            getPlaceholderParameterNames(expectedCount)
+
+    private fun IrMemberAccessExpression.getValueParameterNames(expectedCount: Int): List<String> =
+        if (this is IrDeclarationReference && symbol.isBound)
+            symbol.owner.getValueParameterNames(expectedCount)
+        else if (this is IrCallableReference)
+            getPlaceholderParameterNames(expectedCount) // TODO IrCallableReference should be an IrDeclarationReference
+        else
+            getPlaceholderParameterNames(expectedCount)
+
+    private fun getPlaceholderParameterNames(expectedCount: Int) =
+        (1..expectedCount).map { "$it" }
+
+    private fun IrSymbolOwner.getTypeParameterNames(expectedCount: Int): List<String> =
+        if (this is IrTypeParametersContainer) {
+            val typeParameters = if (this is IrConstructor) getFullTypeParametersList() else this.typeParameters
+            (0 until expectedCount).map {
+                if (it < typeParameters.size)
+                    typeParameters[it].name.asString()
+                else
+                    "${it + 1}"
+            }
+        } else {
+            getPlaceholderParameterNames(expectedCount)
+        }
+
+    private fun IrSymbolOwner.getValueParameterNames(expectedCount: Int): List<String> =
+        if (this is IrFunction) {
+            (0 until expectedCount).map {
+                if (it < valueParameters.size)
+                    valueParameters[it].name.asString()
+                else
+                    "${it + 1}"
+            }
+        } else {
+            getPlaceholderParameterNames(expectedCount)
+        }
+
+    private fun IrConstructor.getFullTypeParametersList(): List<IrTypeParameter> =
+        getConstructedClassTypeParameters().apply { addAll(typeParameters) }
+
+    private fun IrConstructor.getConstructedClassTypeParameters(): MutableList<IrTypeParameter> {
+        val typeParameters = ArrayList<IrTypeParameter>()
+        val parentClass = try {
+            parent as? IrClass ?: return typeParameters
+        } catch (e: Exception) {
+            return typeParameters
+        }
+        parentClass.collectClassTypeParameters(typeParameters)
+        return typeParameters
     }
 
-    private fun IrMemberAccessExpression.renderTypeArgument(index: Int): String {
-        val typeArgument = getTypeArgument(index)
-        return if (typeArgument != null)
-            DescriptorRenderer.ONLY_NAMES_WITH_SHORT_TYPES.renderType(typeArgument)
-        else
-            "<none>"
+    private fun IrClass.collectClassTypeParameters(typeParameters: MutableList<IrTypeParameter>) {
+        var currentClass = this
+        while (true) {
+            typeParameters.addAll(currentClass.typeParameters)
+            if (!currentClass.isInner) return
+            currentClass = try {
+                currentClass.parent as? IrClass ?: return
+            } catch (e: Exception) {
+                return
+            }
+        }
     }
+
+    private fun IrMemberAccessExpression.renderTypeArgument(index: Int): String =
+        getTypeArgument(index)?.render() ?: "<none>"
 
     override fun visitGetField(expression: IrGetField, data: String) {
         expression.dumpLabeledElementWith(data) {
@@ -265,8 +304,16 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
 
     override fun visitTypeOperator(expression: IrTypeOperatorCall, data: String) {
         expression.dumpLabeledElementWith(data) {
-            expression.typeOperandClassifier.renderDeclarationElementOrDescriptor("typeOperand")
             expression.acceptChildren(this, "")
+        }
+    }
+
+    override fun visitDynamicOperatorExpression(expression: IrDynamicOperatorExpression, data: String) {
+        expression.dumpLabeledElementWith(data) {
+            expression.receiver.accept(this, "receiver")
+            for ((i, arg) in expression.arguments.withIndex()) {
+                arg.accept(this, i.toString())
+            }
         }
     }
 
@@ -275,20 +322,29 @@ class DumpIrTreeVisitor(out: Appendable) : IrElementVisitor<Unit, String> {
         indented(body)
     }
 
-    private fun IrElement.render(label: String? = null) {
+    private inline fun <T> Collection<T>.dumpItems(caption: String, renderElement: (T) -> Unit) {
+        if (isEmpty()) return
+        indented(caption) {
+            forEach {
+                renderElement(it)
+            }
+        }
+    }
+
+    private fun IrSymbol.dumpInternal(label: String? = null) {
+        if (isBound)
+            owner.dumpInternal(label)
+        else
+            printer.println("$label: UNBOUND ${javaClass.simpleName}")
+    }
+
+    private fun IrElement.dumpInternal(label: String? = null) {
         if (label != null) {
             printer.println("$label: ", accept(elementRenderer, null))
         } else {
             printer.println(accept(elementRenderer, null))
         }
 
-    }
-
-    private fun IrElement.dumpLabeledSubTree(label: String) {
-        printer.println(accept(elementRenderer, null).withLabel(label))
-        indented {
-            acceptChildren(this@DumpIrTreeVisitor, "")
-        }
     }
 
     private inline fun indented(label: String, body: () -> Unit) {

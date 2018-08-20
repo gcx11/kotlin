@@ -3,6 +3,7 @@
  * that can be found in the license/LICENSE.txt file.
  */
 
+@file:UseExperimental(ExperimentalUnsignedTypes::class)
 package kotlin.internal
 
 // (a - b) mod c
@@ -35,6 +36,7 @@ private fun differenceModulo(a: ULong, b: ULong, c: ULong): ULong {
  * @suppress
  */
 @PublishedApi
+@SinceKotlin("1.3")
 internal fun getProgressionLastElement(start: UInt, end: UInt, step: Int): UInt = when {
     step > 0 -> if (start >= end) end else end - differenceModulo(end, start, step.toUInt())
     step < 0 -> if (start <= end) end else end + differenceModulo(start, end, (-step).toUInt())
@@ -58,6 +60,7 @@ internal fun getProgressionLastElement(start: UInt, end: UInt, step: Int): UInt 
  * @suppress
  */
 @PublishedApi
+@SinceKotlin("1.3")
 internal fun getProgressionLastElement(start: ULong, end: ULong, step: Long): ULong = when {
     step > 0 -> if (start >= end) end else end - differenceModulo(end, start, step.toULong())
     step < 0 -> if (start <= end) end else end + differenceModulo(start, end, (-step).toULong())

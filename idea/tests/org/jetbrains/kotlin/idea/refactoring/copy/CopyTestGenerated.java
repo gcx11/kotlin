@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -62,6 +62,11 @@ public class CopyTestGenerated extends AbstractCopyTest {
     @TestMetadata("copyFIleFromDefaultPackage/copyFIleFromDefaultPackage.test")
     public void testCopyFIleFromDefaultPackage_CopyFIleFromDefaultPackage() throws Exception {
         runTest("idea/testData/refactoring/copy/copyFIleFromDefaultPackage/copyFIleFromDefaultPackage.test");
+    }
+
+    @TestMetadata("copyFileFromDefaultPackageToDefaultPackage/copyFIleToDefaultPackage.test")
+    public void testCopyFileFromDefaultPackageToDefaultPackage_CopyFIleToDefaultPackage() throws Exception {
+        runTest("idea/testData/refactoring/copy/copyFileFromDefaultPackageToDefaultPackage/copyFIleToDefaultPackage.test");
     }
 
     @TestMetadata("copyFIleRetainContent/copyFIleRetainContent.test")

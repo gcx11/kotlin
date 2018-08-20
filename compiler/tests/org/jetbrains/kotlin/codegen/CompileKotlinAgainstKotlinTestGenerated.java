@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -25,6 +25,10 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
     }
 
+    private void runTestWithPackageReplacement(String testDataFilePath, String packageName) throws Exception {
+        KotlinTestUtils.runTest(filePath -> doTestWithCoroutinesPackageReplacement(filePath, packageName), TargetBackend.ANY, testDataFilePath);
+    }
+
     public void testAllFilesPresentInCompileKotlinAgainstKotlin() throws Exception {
         KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
     }
@@ -37,6 +41,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
     @TestMetadata("annotationsOnTypeAliases.kt")
     public void testAnnotationsOnTypeAliases() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/annotationsOnTypeAliases.kt");
+    }
+
+    @TestMetadata("callDeserializedPropertyOnInlineClassType.kt")
+    public void testCallDeserializedPropertyOnInlineClassType() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/callDeserializedPropertyOnInlineClassType.kt");
     }
 
     @TestMetadata("callsToMultifileClassFromOtherPackage.kt")
@@ -69,6 +78,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/constructorVararg.kt");
     }
 
+    @TestMetadata("constructorWithInlineClassParametersInBinaryDependencies.kt")
+    public void testConstructorWithInlineClassParametersInBinaryDependencies() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/constructorWithInlineClassParametersInBinaryDependencies.kt");
+    }
+
     @TestMetadata("copySamOnInline.kt")
     public void testCopySamOnInline() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/copySamOnInline.kt");
@@ -81,14 +95,12 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
 
     @TestMetadata("coroutinesBinary.kt")
     public void testCoroutinesBinary_1_2() throws Exception {
-        String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/compileKotlinAgainstKotlin/coroutinesBinary.kt");
-        doTestWithCoroutinesPackageReplacement(fileName, "kotlin.coroutines.experimental");
+        runTestWithPackageReplacement("compiler/testData/compileKotlinAgainstKotlin/coroutinesBinary.kt", "kotlin.coroutines.experimental");
     }
 
     @TestMetadata("coroutinesBinary.kt")
     public void testCoroutinesBinary_1_3() throws Exception {
-        String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/compileKotlinAgainstKotlin/coroutinesBinary.kt");
-        doTestWithCoroutinesPackageReplacement(fileName, "kotlin.coroutines");
+        runTestWithPackageReplacement("compiler/testData/compileKotlinAgainstKotlin/coroutinesBinary.kt", "kotlin.coroutines");
     }
 
     @TestMetadata("defaultConstructor.kt")
@@ -116,6 +128,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/enum.kt");
     }
 
+    @TestMetadata("inlineClassFromBinaryDependencies.kt")
+    public void testInlineClassFromBinaryDependencies() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/inlineClassFromBinaryDependencies.kt");
+    }
+
     @TestMetadata("inlinedConstants.kt")
     public void testInlinedConstants() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/inlinedConstants.kt");
@@ -131,14 +148,29 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/internalSetterOverridden.kt");
     }
 
+    @TestMetadata("internalWithOtherModuleName.kt")
+    public void testInternalWithOtherModuleName() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/internalWithOtherModuleName.kt");
+    }
+
     @TestMetadata("jvmField.kt")
     public void testJvmField() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/jvmField.kt");
     }
 
+    @TestMetadata("jvmFieldInAnnotationCompanion.kt")
+    public void testJvmFieldInAnnotationCompanion() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/jvmFieldInAnnotationCompanion.kt");
+    }
+
     @TestMetadata("jvmFieldInConstructor.kt")
     public void testJvmFieldInConstructor() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/jvmFieldInConstructor.kt");
+    }
+
+    @TestMetadata("jvmFieldInInterfaceCompanion.kt")
+    public void testJvmFieldInInterfaceCompanion() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/jvmFieldInInterfaceCompanion.kt");
     }
 
     @TestMetadata("jvmNames.kt")
@@ -154,6 +186,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
     @TestMetadata("jvmPackageNameInRootPackage.kt")
     public void testJvmPackageNameInRootPackage() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/jvmPackageNameInRootPackage.kt");
+    }
+
+    @TestMetadata("jvmPackageNameMultifileClass.kt")
+    public void testJvmPackageNameMultifileClass() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/jvmPackageNameMultifileClass.kt");
     }
 
     @TestMetadata("jvmPackageNameWithJvmName.kt")
@@ -181,6 +218,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/kt14012_multi.kt");
     }
 
+    @TestMetadata("kt21775.kt")
+    public void testKt21775() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/kt21775.kt");
+    }
+
     @TestMetadata("multifileClassInlineFunctionAccessingProperty.kt")
     public void testMultifileClassInlineFunctionAccessingProperty() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/multifileClassInlineFunctionAccessingProperty.kt");
@@ -201,9 +243,24 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/nestedEnum.kt");
     }
 
+    @TestMetadata("nestedFunctionTypeAliasExpansion.kt")
+    public void testNestedFunctionTypeAliasExpansion() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/nestedFunctionTypeAliasExpansion.kt");
+    }
+
     @TestMetadata("nestedObject.kt")
     public void testNestedObject() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/nestedObject.kt");
+    }
+
+    @TestMetadata("nestedTypeAliasExpansion.kt")
+    public void testNestedTypeAliasExpansion() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/nestedTypeAliasExpansion.kt");
+    }
+
+    @TestMetadata("optionalAnnotation.kt")
+    public void testOptionalAnnotation() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/optionalAnnotation.kt");
     }
 
     @TestMetadata("platformTypes.kt")
@@ -219,6 +276,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
     @TestMetadata("recursiveGeneric.kt")
     public void testRecursiveGeneric() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/recursiveGeneric.kt");
+    }
+
+    @TestMetadata("reflectTopLevelFunctionOtherFile.kt")
+    public void testReflectTopLevelFunctionOtherFile() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/reflectTopLevelFunctionOtherFile.kt");
     }
 
     @TestMetadata("sealedClass.kt")
@@ -254,5 +316,165 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
     @TestMetadata("typeAliasesKt13181.kt")
     public void testTypeAliasesKt13181() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/typeAliasesKt13181.kt");
+    }
+
+    @TestMetadata("unsignedTypesInAnnotations.kt")
+    public void testUnsignedTypesInAnnotations() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/unsignedTypesInAnnotations.kt");
+    }
+
+    @TestMetadata("compiler/testData/compileKotlinAgainstKotlin/coroutines")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class Coroutines extends AbstractCompileKotlinAgainstKotlinTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInCoroutines() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin/coroutines"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+        }
+
+        @TestMetadata("builder.kt")
+        public void testBuilder() throws Exception {
+            runTest("compiler/testData/compileKotlinAgainstKotlin/coroutines/builder.kt");
+        }
+
+        @TestMetadata("receiver.kt")
+        public void testReceiver() throws Exception {
+            runTest("compiler/testData/compileKotlinAgainstKotlin/coroutines/receiver.kt");
+        }
+
+        @TestMetadata("simple.kt")
+        public void testSimple() throws Exception {
+            runTest("compiler/testData/compileKotlinAgainstKotlin/coroutines/simple.kt");
+        }
+    }
+
+    @TestMetadata("compiler/testData/compileKotlinAgainstKotlin/jvm8")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class Jvm8 extends AbstractCompileKotlinAgainstKotlinTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInJvm8() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin/jvm8"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+        }
+
+        @TestMetadata("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class Defaults extends AbstractCompileKotlinAgainstKotlinTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+            }
+
+            public void testAllFilesPresentInDefaults() throws Exception {
+                KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+            }
+
+            @TestMetadata("superCall.kt")
+            public void testSuperCall() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superCall.kt");
+            }
+
+            @TestMetadata("superCallFromInterface.kt")
+            public void testSuperCallFromInterface() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superCallFromInterface.kt");
+            }
+
+            @TestMetadata("superCallFromInterface2.kt")
+            public void testSuperCallFromInterface2() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superCallFromInterface2.kt");
+            }
+
+            @TestMetadata("superPropAccess.kt")
+            public void testSuperPropAccess() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superPropAccess.kt");
+            }
+
+            @TestMetadata("superPropAccessFromInterface.kt")
+            public void testSuperPropAccessFromInterface() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superPropAccessFromInterface.kt");
+            }
+
+            @TestMetadata("superPropAccessFromInterface2.kt")
+            public void testSuperPropAccessFromInterface2() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/defaults/superPropAccessFromInterface2.kt");
+            }
+        }
+
+        @TestMetadata("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class Jvm8against6 extends AbstractCompileKotlinAgainstKotlinTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+            }
+
+            public void testAllFilesPresentInJvm8against6() throws Exception {
+                KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+            }
+
+            @TestMetadata("jdk8Against6.kt")
+            public void testJdk8Against6() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/jdk8Against6.kt");
+            }
+
+            @TestMetadata("simpleCall.kt")
+            public void testSimpleCall() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/simpleCall.kt");
+            }
+
+            @TestMetadata("simpleCallWithBigHierarchy.kt")
+            public void testSimpleCallWithBigHierarchy() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/simpleCallWithBigHierarchy.kt");
+            }
+
+            @TestMetadata("simpleCallWithHierarchy.kt")
+            public void testSimpleCallWithHierarchy() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/simpleCallWithHierarchy.kt");
+            }
+
+            @TestMetadata("simpleProp.kt")
+            public void testSimpleProp() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/simpleProp.kt");
+            }
+
+            @TestMetadata("simplePropWithHierarchy.kt")
+            public void testSimplePropWithHierarchy() throws Exception {
+                runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/simplePropWithHierarchy.kt");
+            }
+
+            @TestMetadata("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/delegation")
+            @TestDataPath("$PROJECT_ROOT")
+            @RunWith(JUnit3RunnerWithInners.class)
+            public static class Delegation extends AbstractCompileKotlinAgainstKotlinTest {
+                private void runTest(String testDataFilePath) throws Exception {
+                    KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+                }
+
+                public void testAllFilesPresentInDelegation() throws Exception {
+                    KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/delegation"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+                }
+
+                @TestMetadata("diamond.kt")
+                public void testDiamond() throws Exception {
+                    runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/delegation/diamond.kt");
+                }
+
+                @TestMetadata("diamond2.kt")
+                public void testDiamond2() throws Exception {
+                    runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/delegation/diamond2.kt");
+                }
+
+                @TestMetadata("diamond3.kt")
+                public void testDiamond3() throws Exception {
+                    runTest("compiler/testData/compileKotlinAgainstKotlin/jvm8/jvm8against6/delegation/diamond3.kt");
+                }
+            }
+        }
     }
 }

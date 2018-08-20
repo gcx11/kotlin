@@ -20,7 +20,6 @@ import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.containers.ContainerUtil;
 import kotlin.collections.CollectionsKt;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.kotlin.builtins.BuiltInsLoaderImpl;
 import org.jetbrains.kotlin.builtins.DefaultBuiltIns;
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns;
 import org.jetbrains.kotlin.builtins.functions.BuiltInFictitiousFunctionClassFactory;
@@ -36,6 +35,7 @@ import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.resolve.lazy.LazyResolveTestUtilsKt;
 import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyPackageDescriptor;
+import org.jetbrains.kotlin.serialization.deserialization.builtins.BuiltInsLoaderImpl;
 import org.jetbrains.kotlin.storage.LockBasedStorageManager;
 import org.jetbrains.kotlin.test.ConfigurationKind;
 import org.jetbrains.kotlin.test.KotlinTestUtils;
@@ -83,7 +83,7 @@ public class LoadBuiltinsTest extends KotlinTestWithEnvironment {
 
     @NotNull
     private static PackageFragmentProvider createBuiltInsPackageFragmentProvider() {
-        LockBasedStorageManager storageManager = new LockBasedStorageManager();
+        LockBasedStorageManager storageManager = new LockBasedStorageManager("LoadBuiltinsTest");
         ModuleDescriptorImpl builtInsModule =
                 new ModuleDescriptorImpl(KotlinBuiltIns.BUILTINS_MODULE_NAME, storageManager, DefaultBuiltIns.getInstance());
 

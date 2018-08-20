@@ -16,45 +16,27 @@
 
 package org.jetbrains.kotlin.ir.expressions.impl
 
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
-import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
-import org.jetbrains.kotlin.ir.symbols.impl.IrClassSymbolImpl
-import org.jetbrains.kotlin.ir.symbols.impl.IrTypeParameterSymbolImpl
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
-import org.jetbrains.kotlin.types.KotlinType
 
 class IrClassReferenceImpl(
     startOffset: Int,
     endOffset: Int,
-    type: KotlinType,
+    type: IrType,
     symbol: IrClassifierSymbol,
-    override val classType: KotlinType
-) : IrClassReference,
+    override val classType: IrType
+) :
     IrTerminalDeclarationReferenceBase<IrClassifierSymbol, ClassifierDescriptor>(
         startOffset, endOffset, type,
         symbol, symbol.descriptor
-    ) {
-    @Deprecated("Creates unbound symbols")
-    constructor(
-        startOffset: Int,
-        endOffset: Int,
-        type: KotlinType,
-        descriptor: ClassifierDescriptor,
-        classType: KotlinType
-    ) : this(startOffset, endOffset, type, createClassifierSymbol(descriptor), classType)
+    ),
+    IrClassReference {
 
     override val descriptor: ClassifierDescriptor get() = symbol.descriptor
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitClassReference(this, data)
 }
-
-internal fun createClassifierSymbol(descriptor: ClassifierDescriptor): IrClassifierSymbol =
-    when (descriptor) {
-        is ClassDescriptor -> IrClassSymbolImpl(descriptor)
-        is TypeParameterDescriptor -> IrTypeParameterSymbolImpl(descriptor)
-        else -> throw IllegalArgumentException("Unexpected referenced classifier: $descriptor")
-    }

@@ -1,4 +1,3 @@
-// LANGUAGE_VERSION: 1.2
 
 enum class X {
     B {

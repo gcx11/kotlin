@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -47,6 +47,16 @@ public class KotlinMavenInspectionTestGenerated extends AbstractKotlinMavenInspe
     @TestMetadata("deprecatedJreWithDependencyManagement.xml")
     public void testDeprecatedJreWithDependencyManagement() throws Exception {
         runTest("idea/idea-maven/testData/maven-inspections/deprecatedJreWithDependencyManagement.xml");
+    }
+
+    @TestMetadata("deprecatedKotlinxCoroutines.xml")
+    public void testDeprecatedKotlinxCoroutines() throws Exception {
+        runTest("idea/idea-maven/testData/maven-inspections/deprecatedKotlinxCoroutines.xml");
+    }
+
+    @TestMetadata("deprecatedKotlinxCoroutinesNoError.xml")
+    public void testDeprecatedKotlinxCoroutinesNoError() throws Exception {
+        runTest("idea/idea-maven/testData/maven-inspections/deprecatedKotlinxCoroutinesNoError.xml");
     }
 
     @TestMetadata("ideAndMavenVersions.xml")

@@ -1,3 +1,5 @@
+// IGNORE_BACKEND: NATIVE
+// IGNORE_BACKEND: JS_IR
 // IGNORE_BACKEND: JS
 
 import kotlin.reflect.KProperty

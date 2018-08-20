@@ -38,3 +38,19 @@ class EmptyProperties {
          */
         set(value) {}
 }
+
+var prop: Int // Int
+    get() = 1 // this is getter
+    set(value) {} // this is setter
+
+val prop2: Int get = 1 // prop2
+
+var prop3: Int // Int
+    // this comment is for getter
+    get() = 1
+    // this comment is for setter
+    set(value) {}
+
+val prop4: Int
+    get() = 42
+    set(value) {}

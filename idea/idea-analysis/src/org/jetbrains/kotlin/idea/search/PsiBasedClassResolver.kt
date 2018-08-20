@@ -27,7 +27,6 @@ import com.intellij.psi.util.PsiModificationTracker
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.asJava.ImpreciseResolveResult
 import org.jetbrains.kotlin.asJava.ImpreciseResolveResult.*
-import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.idea.caches.project.getNullableModuleInfo
 import org.jetbrains.kotlin.idea.compiler.IDELanguageSettingsProvider
 import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
@@ -63,9 +62,12 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
     private var forceAmbiguityForNonAnnotations: Boolean = false
 
     companion object {
-        @TestOnly val attempts = AtomicInteger()
-        @TestOnly val trueHits = AtomicInteger()
-        @TestOnly val falseHits = AtomicInteger()
+        @get:TestOnly
+        val attempts = AtomicInteger()
+        @get:TestOnly
+        val trueHits = AtomicInteger()
+        @get:TestOnly
+        val falseHits = AtomicInteger()
 
         private val PSI_BASED_CLASS_RESOLVER_KEY = Key<CachedValue<PsiBasedClassResolver>>("PsiBasedClassResolver")
 
@@ -87,7 +89,7 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
         }
     }
 
-    private constructor(target: PsiClass): this(target.qualifiedName ?: "") {
+    private constructor(target: PsiClass) : this(target.qualifiedName ?: "") {
         if (target.qualifiedName == null || target.containingClass != null || targetPackage.isEmpty()) {
             forceAmbiguity = true
             return
@@ -106,8 +108,7 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
             if (candidate.containingClass != null && !candidate.hasModifierProperty(PsiModifier.PRIVATE)) {
                 if (candidate.isAnnotationType) {
                     forceAmbiguity = true
-                }
-                else {
+                } else {
                     forceAmbiguityForNonAnnotations = true
                 }
                 break
@@ -119,8 +120,7 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
                     forceAmbiguity = true
                     break
                 }
-            }
-            else {
+            } else {
                 candidate.qualifiedName?.substringBeforeLast('.', "")?.let { candidatePackage ->
                     if (candidatePackage == "")
                         forceAmbiguity = true
@@ -138,7 +138,8 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
         }
     }
 
-    @TestOnly fun addConflict(fqName: String) {
+    @TestOnly
+    fun addConflict(fqName: String) {
         conflictingPackages.add(fqName.substringBeforeLast('.'))
     }
 
@@ -193,8 +194,7 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
 
         if (result.returnValue == MATCH) {
             trueHits.incrementAndGet()
-        }
-        else if (result.returnValue == NO_MATCH) {
+        } else if (result.returnValue == NO_MATCH) {
             falseHits.incrementAndGet()
         }
         return result.returnValue
@@ -203,24 +203,23 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
     private fun analyzeSingleImport(result: Result, importedFqName: FqName?, isAllUnder: Boolean, aliasName: String?): Result {
         if (!isAllUnder) {
             if (importedFqName?.asString() == targetClassFqName &&
-                (aliasName == null || aliasName == targetShortName)) {
+                (aliasName == null || aliasName == targetShortName)
+            ) {
                 return result.changeTo(Result.Found)
-            }
-            else if (importedFqName?.shortName()?.asString() == targetShortName &&
-                     importedFqName.parent().asString() in conflictingPackages &&
-                     aliasName == null) {
+            } else if (importedFqName?.shortName()?.asString() == targetShortName &&
+                importedFqName.parent().asString() in conflictingPackages &&
+                aliasName == null
+            ) {
                 return result.changeTo(Result.FoundOther)
-            }
-            else if (importedFqName?.shortName()?.asString() == targetShortName &&
-                     importedFqName.parent().asString() in packagesWithTypeAliases &&
-                     aliasName == null) {
+            } else if (importedFqName?.shortName()?.asString() == targetShortName &&
+                importedFqName.parent().asString() in packagesWithTypeAliases &&
+                aliasName == null
+            ) {
                 return Result.Ambiguity
-            }
-            else if (aliasName == targetShortName) {
+            } else if (aliasName == targetShortName) {
                 return result.changeTo(Result.FoundOther)
             }
-        }
-        else {
+        } else {
             when {
                 importedFqName?.asString() == targetPackage -> return result.changeTo(Result.Found)
                 importedFqName?.asString() in conflictingPackages -> return result.changeTo(Result.FoundOther)
@@ -259,8 +258,8 @@ class PsiBasedClassResolver @TestOnly constructor(private val targetClassFqName:
 
 private fun KtFile.getDefaultImports(): List<ImportPath> {
     val moduleInfo = getNullableModuleInfo() ?: return emptyList()
-    val versionSettings = IDELanguageSettingsProvider.getLanguageVersionSettings(moduleInfo, project)
     return TargetPlatformDetector.getPlatform(this).getDefaultImports(
-            versionSettings.supportsFeature(LanguageFeature.DefaultImportOfPackageKotlinComparisons)
+        IDELanguageSettingsProvider.getLanguageVersionSettings(moduleInfo, project),
+        includeLowPriorityImports = true
     )
 }

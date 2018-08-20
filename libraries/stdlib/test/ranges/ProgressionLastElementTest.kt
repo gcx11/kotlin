@@ -5,9 +5,7 @@
 
 package test.ranges
 
-import kotlin.comparisons.*
 import kotlin.test.*
-
 
 class ProgressionLastElementTest {
 
@@ -29,7 +27,7 @@ class ProgressionLastElementTest {
         // start == end
         for (x in INTERESTING) {
             for (increment in INTERESTING)
-                if (increment != 0) {
+                if (increment != 0 && increment != MIN) {
                     doTest(x, x, increment, x)
                 }
         }
@@ -54,13 +52,15 @@ class ProgressionLastElementTest {
         doTest(MIN + 1, MAX, MAX, MAX)
         doTest(MAX - 7, MAX, 3, MAX - 1)
         doTest(MAX - 7, MAX, MAX, MAX - 7)
+        doTest(0, MAX, -3, MAX)
 
         // end == MIN
-        doTest(0, MIN, MIN, MIN)
+        doTest(0, MIN, -MAX, -MAX)
         doTest(0, MIN, MIN / 2, MIN)
-        doTest(MAX, MIN, MIN, -1)
+        doTest(MAX, MIN, -MAX, -MAX)
         doTest(MIN + 7, MIN, -3, MIN + 1)
-        doTest(MIN + 7, MIN, MIN, MIN + 7)
+        doTest(MIN + 7, MIN, -MAX, MIN + 7)
+        doTest(0, MIN, 3, MIN)
     }
 
     @Test fun iterateToFinalElement() {

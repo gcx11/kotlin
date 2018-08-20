@@ -1,5 +1,4 @@
-// IGNORE_BACKEND: JS_IR
-// EXPECTED_REACHABLE_NODES: 1123
+// EXPECTED_REACHABLE_NODES: 1293
 package foo
 
 data class Dat(val start: String, val middle: String, val end: String) {

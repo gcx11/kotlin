@@ -18,15 +18,21 @@ package org.jetbrains.kotlin.serialization
 
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.metadata.ProtoBuf
+import org.jetbrains.kotlin.metadata.serialization.MutableVersionRequirementTable
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.constants.NullValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.nonSourceAnnotations
 import org.jetbrains.kotlin.types.KotlinType
 
-open class KotlinSerializerExtensionBase(private val protocol: SerializerExtensionProtocol) : SerializerExtension() {
+abstract class KotlinSerializerExtensionBase(private val protocol: SerializerExtensionProtocol) : SerializerExtension() {
     override val stringTable = StringTableImpl()
 
-    override fun serializeClass(descriptor: ClassDescriptor, proto: ProtoBuf.Class.Builder) {
+    override fun serializeClass(
+        descriptor: ClassDescriptor,
+        proto: ProtoBuf.Class.Builder,
+        versionRequirementTable: MutableVersionRequirementTable,
+        childSerializer: DescriptorSerializer
+    ) {
         for (annotation in descriptor.nonSourceAnnotations) {
             proto.addExtension(protocol.classAnnotation, annotationSerializer.serializeAnnotation(annotation))
         }
@@ -36,21 +42,40 @@ open class KotlinSerializerExtensionBase(private val protocol: SerializerExtensi
         proto.setExtension(protocol.packageFqName, stringTable.getPackageFqNameIndex(packageFqName))
     }
 
-    override fun serializeConstructor(descriptor: ConstructorDescriptor, proto: ProtoBuf.Constructor.Builder) {
+    override fun serializeConstructor(
+        descriptor: ConstructorDescriptor,
+        proto: ProtoBuf.Constructor.Builder,
+        childSerializer: DescriptorSerializer
+    ) {
         for (annotation in descriptor.nonSourceAnnotations) {
             proto.addExtension(protocol.constructorAnnotation, annotationSerializer.serializeAnnotation(annotation))
         }
     }
 
-    override fun serializeFunction(descriptor: FunctionDescriptor, proto: ProtoBuf.Function.Builder) {
+    override fun serializeFunction(
+        descriptor: FunctionDescriptor,
+        proto: ProtoBuf.Function.Builder,
+        childSerializer: DescriptorSerializer
+    ) {
         for (annotation in descriptor.nonSourceAnnotations) {
             proto.addExtension(protocol.functionAnnotation, annotationSerializer.serializeAnnotation(annotation))
         }
     }
 
-    override fun serializeProperty(descriptor: PropertyDescriptor, proto: ProtoBuf.Property.Builder) {
+    override fun serializeProperty(
+        descriptor: PropertyDescriptor,
+        proto: ProtoBuf.Property.Builder,
+        versionRequirementTable: MutableVersionRequirementTable?,
+        childSerializer: DescriptorSerializer
+    ) {
         for (annotation in descriptor.nonSourceAnnotations) {
             proto.addExtension(protocol.propertyAnnotation, annotationSerializer.serializeAnnotation(annotation))
+        }
+        for (annotation in descriptor.getter?.nonSourceAnnotations.orEmpty()) {
+            proto.addExtension(protocol.propertyGetterAnnotation, annotationSerializer.serializeAnnotation(annotation))
+        }
+        for (annotation in descriptor.setter?.nonSourceAnnotations.orEmpty()) {
+            proto.addExtension(protocol.propertySetterAnnotation, annotationSerializer.serializeAnnotation(annotation))
         }
         val constantInitializer = descriptor.compileTimeInitializer ?: return
         if (constantInitializer !is NullValue) {

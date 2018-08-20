@@ -77,8 +77,15 @@ sealed class ArtifactElement {
         override fun render(context: PathContext) = xml("element", "id" to "module-output", "name" to moduleName)
     }
 
-    data class FileCopy(val source: File) : ArtifactElement() {
-        override fun render(context: PathContext) = xml("element", "id" to "file-copy", "path" to context(source))
+    data class FileCopy(val source: File, val outputFileName: String? = null) : ArtifactElement() {
+        override fun render(context: PathContext): xml {
+            val args = mutableListOf("id" to "file-copy", "path" to context(source))
+            if (outputFileName != null) {
+                args += "output-file-name" to outputFileName
+            }
+
+            return xml("element", *args.toTypedArray())
+        }
     }
 
     data class DirectoryCopy(val source: File) : ArtifactElement() {
@@ -138,6 +145,15 @@ fun generateKotlinPluginArtifactFile(rootProject: Project): PFile {
                 }
             }
 
+            fun fileCopySnapshotAware(file: File): FileCopy {
+                val SHAPSHOT_JAR_SUFFIX = "-SNAPSHOT.jar"
+                if (file.name.endsWith(SHAPSHOT_JAR_SUFFIX)) {
+                    return FileCopy(file, file.name.dropLast(SHAPSHOT_JAR_SUFFIX.length).substringBeforeLast("-") + ".jar")
+                }
+
+                return FileCopy(file)
+            }
+
             when (sourcePath) {
                 is Jar -> {
                     val targetDir = ("lib/" + task.destinationDir.toRelativeString(gradleArtifactDir)).withoutSlash()
@@ -157,7 +173,7 @@ fun generateKotlinPluginArtifactFile(rootProject: Project): PFile {
                         for (dependencyInfo in listOf(configuration).collectDependencies()) {
                             val dependency = (dependencyInfo as? DependencyInfo.ResolvedDependencyInfo)?.dependency ?: continue
 
-                            if (dependency.configuration == "runtimeElements") {
+                            if (dependency.isModuleDependency) {
                                 archiveForJar.add(ModuleOutput(dependency.moduleName + ".src"))
                             } else if (dependency.configuration == "tests-jar" || dependency.configuration == "jpsTest") {
                                 error("Test configurations are not allowed here")
@@ -172,7 +188,7 @@ fun generateKotlinPluginArtifactFile(rootProject: Project): PFile {
                 is Configuration -> {
                     require(sourcePath.name == "sideJars") { "Configurations other than 'sideJars' are not supported" }
                     for (file in sourcePath.resolve()) {
-                        root.getDirectory("lib").add(FileCopy(file))
+                        root.getDirectory("lib").add(fileCopySnapshotAware(file))
                     }
                 }
                 else -> error("${task.name} Unexpected task type ${task.javaClass.name}")

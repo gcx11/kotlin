@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -39,6 +39,11 @@ public class LoadJava8TestGenerated extends AbstractLoadJava8Test {
         @TestMetadata("MapRemove.java")
         public void testMapRemove() throws Exception {
             runTest("compiler/testData/loadJava8/compiledJava/MapRemove.java");
+        }
+
+        @TestMetadata("ParameterNames.java")
+        public void testParameterNames() throws Exception {
+            runTest("compiler/testData/loadJava8/compiledJava/ParameterNames.java");
         }
 
         @TestMetadata("TypeAnnotations.java")

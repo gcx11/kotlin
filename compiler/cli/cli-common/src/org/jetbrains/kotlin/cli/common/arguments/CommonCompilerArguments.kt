@@ -33,6 +33,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         const val WARN = "warn"
         const val ERROR = "error"
         const val ENABLE = "enable"
+        const val DEFAULT = "default"
     }
 
     @get:Transient
@@ -44,7 +45,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         valueDescription = "<version>",
         description = "Provide source compatibility with specified language version"
     )
-    var languageVersion: String? by FreezableVar(null)
+    var languageVersion: String? by NullableStringFreezableVar(null)
 
     @get:Transient
     var autoAdvanceApiVersion: Boolean by FreezableVar(true)
@@ -55,14 +56,25 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         valueDescription = "<version>",
         description = "Allow to use declarations only from the specified version of bundled libraries"
     )
-    var apiVersion: String? by FreezableVar(null)
+    var apiVersion: String? by NullableStringFreezableVar(null)
 
     @Argument(
         value = "-kotlin-home",
         valueDescription = "<path>",
         description = "Path to Kotlin compiler home directory, used for runtime libraries discovery"
     )
-    var kotlinHome: String? by FreezableVar(null)
+    var kotlinHome: String? by NullableStringFreezableVar(null)
+
+    @Argument(
+        value = "-progressive",
+        deprecatedName = "-Xprogressive",
+        description = "Enable progressive compiler mode.\n" +
+                "In this mode, deprecations and bug fixes for unstable code take effect immediately,\n" +
+                "instead of going through a graceful migration cycle.\n" +
+                "Code written in the progressive mode is backward compatible; however, code written in\n" +
+                "non-progressive mode may cause compilation errors in the progressive mode."
+    )
+    var progressiveMode by FreezableVar(false)
 
     @Argument(value = "-P", valueDescription = PLUGIN_OPTION_FORMAT, description = "Pass an option to a plugin")
     var pluginOptions: Array<String>? by FreezableVar(null)
@@ -101,14 +113,14 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         valueDescription = "<path>",
         description = "Path to the kotlin-compiler.jar or directory where IntelliJ configuration files can be found"
     )
-    var intellijPluginRoot: String? by FreezableVar(null)
+    var intellijPluginRoot: String? by NullableStringFreezableVar(null)
 
     @Argument(
         value = "-Xcoroutines",
         valueDescription = "{enable|warn|error}",
         description = "Enable coroutines or report warnings or errors on declarations and use sites of 'suspend' modifier"
     )
-    var coroutinesState: String? by FreezableVar(WARN)
+    var coroutinesState: String? by NullableStringFreezableVar(DEFAULT)
 
     @Argument(
         value = "-Xnew-inference",
@@ -144,7 +156,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
     @Argument(
         value = "-Xuse-experimental",
         valueDescription = "<fq.name>",
-        description = "Enable usages of COMPILATION-affecting experimental API for marker annotation with the given fully qualified name"
+        description = "Enable, but don't propagate usages of experimental API for marker annotation with the given fully qualified name"
     )
     var useExperimental: Array<String>? by FreezableVar(null)
 
@@ -162,26 +174,115 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         valueDescription = "<path>",
         description = "Dump detailed performance statistics to the specified file"
     )
-    var dumpPerf: String? by FreezableVar(null)
+    var dumpPerf: String? by NullableStringFreezableVar(null)
 
     @Argument(
-        value = "-Xprogressive",
-        description = "Enable compiler progressive mode.\n" +
-                "In this mode, deprecations and bug fixes for unstable code take effect immediately,\n" +
-                "instead of going through graceful migration cycle.\n" +
-                "Code, written in progressive mode is backward compatible; however, code written in\n" +
-                "non-progressive mode may cause compilation errors in progressive mode."
+        value = "-Xmetadata-version",
+        description = "Change metadata version of the generated binary files"
     )
-    var progressiveMode by FreezableVar(false)
+    var metadataVersion: String? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xcommon-sources",
+        valueDescription = "<path>",
+        description = "Sources of the common module that need to be compiled together with this module in the multi-platform mode.\n" +
+                "Should be a subset of sources passed as free arguments"
+    )
+    var commonSources: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xallow-result-return-type",
+        description = "Allow compiling code when `kotlin.Result` is used as a return type"
+    )
+    var allowResultReturnType: Boolean by FreezableVar(false)
+
+    @Argument(
+        value = "-Xlist-phases",
+        description = "List backend phases"
+    )
+    var listPhases: Boolean by FreezableVar(false)
+
+    @Argument(
+        value = "-Xdisable-phases",
+        description = "Disable backend phases"
+    )
+    var disablePhases: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xverbose-phases",
+        description = "Be verbose while performing these backend phases"
+    )
+    var verbosePhases: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-dump-before",
+        description = "Dump backend state before these phases"
+    )
+    var phasesToDumpBefore: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-dump-after",
+        description = "Dump backend state after these phases"
+    )
+    var phasesToDumpAfter: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-dump",
+        description = "Dump backend state both before and after these phases"
+    )
+    var phasesToDump: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xexclude-from-dumping",
+        description = "Names of elements that should not be dumped"
+    )
+    var namesExcludedFromDumping: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-validate-before",
+        description = "Validate backend state before these phases"
+    )
+    var phasesToValidateBefore: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-validate-after",
+        description = "Validate backend state after these phases"
+    )
+    var phasesToValidateAfter: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xphases-to-validate",
+        description = "Validate backend state both before and after these phases"
+    )
+    var phasesToValidate: Array<String>? by FreezableVar(null)
+
+    @Argument(
+        value = "-Xprofile-phases",
+        description = "Profile backend phases"
+    )
+    var profilePhases: Boolean by FreezableVar(false)
+
+    @Argument(
+        value = "-Xcheck-phase-conditions",
+        description = "Check pre- and postconditions on phases"
+    )
+    var checkPhaseConditions: Boolean by FreezableVar(false)
+
+    @Argument(
+        value = "-Xcheck-sticky-phase-conditions",
+        description = "Run sticky condition checks on subsequent phases as well. Implies -Xcheck-conditions"
+    )
+    var checkStickyPhaseConditions: Boolean by FreezableVar(false)
 
     open fun configureAnalysisFlags(collector: MessageCollector): MutableMap<AnalysisFlag<*>, Any> {
         return HashMap<AnalysisFlag<*>, Any>().apply {
-            put(AnalysisFlag.skipMetadataVersionCheck, skipMetadataVersionCheck)
-            put(AnalysisFlag.multiPlatformDoNotCheckActual, noCheckActual)
-            put(AnalysisFlag.allowKotlinPackage, allowKotlinPackage)
-            put(AnalysisFlag.experimental, experimental?.toList().orEmpty())
-            put(AnalysisFlag.useExperimental, useExperimental?.toList().orEmpty())
-            put(AnalysisFlag.explicitApiVersion, apiVersion != null)
+            put(AnalysisFlags.skipMetadataVersionCheck, skipMetadataVersionCheck)
+            put(AnalysisFlags.multiPlatformDoNotCheckActual, noCheckActual)
+            put(AnalysisFlags.allowKotlinPackage, allowKotlinPackage)
+            put(AnalysisFlags.experimental, experimental?.toList().orEmpty())
+            put(AnalysisFlags.useExperimental, useExperimental?.toList().orEmpty())
+            put(AnalysisFlags.explicitApiVersion, apiVersion != null)
+            put(AnalysisFlags.allowResultReturnType, allowResultReturnType)
         }
     }
 
@@ -194,7 +295,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
             when (coroutinesState) {
                 CommonCompilerArguments.ERROR -> put(LanguageFeature.Coroutines, LanguageFeature.State.ENABLED_WITH_ERROR)
                 CommonCompilerArguments.ENABLE -> put(LanguageFeature.Coroutines, LanguageFeature.State.ENABLED)
-                CommonCompilerArguments.WARN -> {
+                CommonCompilerArguments.WARN, CommonCompilerArguments.DEFAULT -> {
                 }
                 else -> {
                     val message = "Invalid value of -Xcoroutines (should be: enable, warn or error): " + coroutinesState
@@ -204,6 +305,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
 
             if (newInference) {
                 put(LanguageFeature.NewInference, LanguageFeature.State.ENABLED)
+                put(LanguageFeature.SamConversionForKotlinFunctions, LanguageFeature.State.ENABLED)
             }
 
             if (legacySmartCastAfterTry) {
@@ -239,15 +341,22 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         }
 
     private fun HashMap<LanguageFeature, LanguageFeature.State>.configureLanguageFeaturesFromInternalArgs(collector: MessageCollector) {
-        val languageSettingsParser = LanguageSettingsParser()
         val featuresThatForcePreReleaseBinaries = mutableListOf<LanguageFeature>()
 
-        for (argument in internalArguments) {
-            val (feature, state) = languageSettingsParser.parseInternalArgument(argument, collector) ?: continue
+        var samConversionsExplicitlyPassed = false
+        for ((feature, state) in internalArguments.filterIsInstance<ManualLanguageFeatureSetting>()) {
+            if (feature == LanguageFeature.SamConversionForKotlinFunctions) {
+                samConversionsExplicitlyPassed = true
+            }
+
             put(feature, state)
             if (state == LanguageFeature.State.ENABLED && feature.forcesPreReleaseBinariesIfEnabled()) {
                 featuresThatForcePreReleaseBinaries += feature
             }
+        }
+
+        if (!samConversionsExplicitlyPassed && this[LanguageFeature.NewInference] == LanguageFeature.State.ENABLED) {
+            put(LanguageFeature.SamConversionForKotlinFunctions, LanguageFeature.State.ENABLED)
         }
 
         if (featuresThatForcePreReleaseBinaries.isNotEmpty()) {
@@ -258,7 +367,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
         }
     }
 
-    fun configureLanguageVersionSettings(collector: MessageCollector): LanguageVersionSettings {
+    fun toLanguageVersionSettings(collector: MessageCollector): LanguageVersionSettings {
 
         // If only "-api-version" is specified, language version is assumed to be the latest stable
         val languageVersion = parseVersion(collector, languageVersion, "language") ?: LanguageVersion.LATEST_STABLE
@@ -281,20 +390,45 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
             )
         }
 
-        if (progressiveMode && languageVersion < LanguageVersion.LATEST_STABLE) {
+        val deprecatedVersion = when {
+            languageVersion < LanguageVersion.FIRST_SUPPORTED -> "Language version ${languageVersion.versionString}"
+            apiVersion < LanguageVersion.FIRST_SUPPORTED -> "API version ${apiVersion.versionString}"
+            else -> null
+        }
+        if (deprecatedVersion != null) {
             collector.report(
                 CompilerMessageSeverity.STRONG_WARNING,
-                "'-Xprogressive' meaningful only for latest language version (${LanguageVersion.LATEST_STABLE}), while this build uses $languageVersion\n" +
-                        "Behaviour of compiler in such mode is undefined; please, consider moving to the latest stable version or turning off progressive mode."
+                "$deprecatedVersion is deprecated and its support will be removed in a future version of Kotlin"
             )
         }
 
-        return LanguageVersionSettingsImpl(
+        if (progressiveMode && languageVersion < LanguageVersion.LATEST_STABLE) {
+            collector.report(
+                CompilerMessageSeverity.STRONG_WARNING,
+                "'-progressive' is meaningful only for the latest language version (${LanguageVersion.LATEST_STABLE}), " +
+                        "while this build uses $languageVersion\n" +
+                        "Compiler behavior in such mode is undefined; please, consider moving to the latest stable version " +
+                        "or turning off progressive mode."
+            )
+        }
+
+        val languageVersionSettings = LanguageVersionSettingsImpl(
             languageVersion,
             ApiVersion.createByLanguageVersion(apiVersion),
             configureAnalysisFlags(collector),
             configureLanguageFeatures(collector)
         )
+
+        if (languageVersionSettings.supportsFeature(LanguageFeature.ReleaseCoroutines)) {
+            if (coroutinesState != DEFAULT) {
+                collector.report(
+                    CompilerMessageSeverity.STRONG_WARNING,
+                    "-Xcoroutines has no effect: coroutines are enabled anyway in 1.3 and beyond"
+                )
+            }
+        }
+
+        return languageVersionSettings
     }
 
     private fun parseVersion(collector: MessageCollector, value: String?, versionOf: String): LanguageVersion? =

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -23,7 +23,7 @@ class SuspendingCallHintsTest : KotlinLightCodeInsightFixtureTestCase() {
             """import kotlin.coroutines.experimental.buildSequence
 
              val x = buildSequence {<hint text="this: SequenceBuilder<Int>" />
-                 <hint text="#" />yield(<hint text="value:" />1)
+                 <hint text="#" />yield(1)
              } """
         )
     }

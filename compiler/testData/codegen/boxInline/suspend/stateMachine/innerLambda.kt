@@ -1,10 +1,17 @@
+// IGNORE_BACKEND: JVM_IR
 // FILE: inlined.kt
 // COMMON_COROUTINES_TEST
 // WITH_RUNTIME
+// WITH_COROUTINES
 // NO_CHECK_LAMBDA_INLINING
+// CHECK_STATE_MACHINE
 
 suspend inline fun crossinlineMe(crossinline c: suspend () -> Unit) {
-    val l: suspend () -> Unit = { c() }
+    val l: suspend () -> Unit = {
+        c()
+        c()
+    }
+    l()
     l()
 }
 
@@ -13,38 +20,19 @@ suspend inline fun crossinlineMe(crossinline c: suspend () -> Unit) {
 
 import COROUTINES_PACKAGE.*
 import COROUTINES_PACKAGE.intrinsics.*
+import helpers.*
 
 fun builder(c: suspend () -> Unit) {
-    c.startCoroutine(object: Continuation<Unit> {
-        override val context: CoroutineContext
-            get() = EmptyCoroutineContext
-
-        override fun resume(value: Unit) {
-        }
-
-        override fun resumeWithException(exception: Throwable) {
-            throw exception
-        }
-    })
-}
-
-var i = 0;
-
-suspend fun suspendHere() = suspendCoroutineOrReturn<Unit> {
-    i++
-    COROUTINE_SUSPENDED
+    c.startCoroutine(CheckStateMachineContinuation)
 }
 
 fun box(): String {
     builder {
         crossinlineMe {
-            suspendHere()
-            suspendHere()
-            suspendHere()
-            suspendHere()
-            suspendHere()
+            StateMachineChecker.suspendHere()
+            StateMachineChecker.suspendHere()
         }
     }
-    if (i != 1) return "FAIL"
+    StateMachineChecker.check(numberOfSuspensions = 8)
     return "OK"
 }
