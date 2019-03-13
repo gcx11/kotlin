@@ -30,6 +30,7 @@ private fun KtPropertyAccessor.isRedundantGetter(): Boolean {
     if (!isGetter) return false
     if (hasModifier(KtTokens.EXTERNAL_KEYWORD)) return false
     if (annotationEntries.isNotEmpty()) return false
+    if (hasModifier(KtTokens.EXTERNAL_KEYWORD)) return false
     val expression = bodyExpression ?: return true
     if (expression is KtNameReferenceExpression) {
         return expression.isFieldText()

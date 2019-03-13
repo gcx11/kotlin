@@ -30,7 +30,7 @@ class RedundantSetterInspection : AbstractKotlinInspection(), CleanupLocalInspec
 private fun KtPropertyAccessor.isRedundantSetter(): Boolean {
     if (!isSetter) return false
     if (annotationEntries.isNotEmpty()) return false
-    if (hasLowerVisibilityThanProperty()) return false
+    if (hasModifier(KtTokens.EXTERNAL_KEYWORD)) return false
     val expression = bodyExpression ?: return true
     if (expression is KtBlockExpression) {
         val statement = expression.statements.takeIf { it.size == 1 }?.firstOrNull() ?: return false
@@ -66,6 +66,15 @@ private class RemoveRedundantSetterFix : LocalQuickFix {
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         val accessor = descriptor.psiElement as? KtPropertyAccessor ?: return
-        accessor.delete()
+        if (accessor.hasLowerVisibilityThanProperty()) {
+            accessor.bodyExpression?.delete()
+            accessor.parameterList?.also {
+                it.delete()
+                accessor.node.findChildByType(KtTokens.LPAR)?.psi?.delete()
+                accessor.node.findChildByType(KtTokens.RPAR)?.psi?.delete()
+            }
+        } else {
+            accessor.delete()
+        }
     }
 }
