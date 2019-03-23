@@ -8,6 +8,7 @@ dependencies {
     testRuntime(intellijDep())
 
     compile(kotlinStdlib())
+    compile(project(":idea:idea-core"))
     compile(project(":compiler:frontend"))
     compile(project(":compiler:frontend.java"))
     compile(project(":compiler:light-classes"))
