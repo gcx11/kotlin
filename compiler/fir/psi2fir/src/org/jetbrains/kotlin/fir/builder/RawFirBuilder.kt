@@ -276,7 +276,7 @@ class RawFirBuilder(val session: FirSession, val stubMode: Boolean) {
                 returnTypeRef = type,
                 isVar = isMutable,
                 initializer = FirQualifiedAccessExpressionImpl(session, this).apply {
-                    calleeReference = FirResolvedCallableReferenceImpl(
+                    calleeReference = FirPropertyFromParameterCallableReference(
                         this@RawFirBuilder.session, this@toFirProperty, nameAsSafeName, firParameter.symbol
                     )
                 },
