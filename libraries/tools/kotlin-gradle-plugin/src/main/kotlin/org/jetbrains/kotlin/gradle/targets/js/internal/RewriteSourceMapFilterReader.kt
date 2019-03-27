@@ -70,7 +70,7 @@ open class RewriteSourceMapFilterReader(
       if (surplusPos == -1) {
         jsonString.append(readBuffer, 0, lastRead)
         if (jsonString.length + lastRead > prologLimit) {
-          writeBackUnsupported(jsonString.toString(), "Too many sources or format is not unsupported")
+          writeBackUnsupported(jsonString.toString(), "Too many sources or format is not supported")
           return
         }
       } else {

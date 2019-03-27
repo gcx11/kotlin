@@ -87,7 +87,7 @@ class RewriteSourceMapFilterReaderTest {
             """{"version":3,"file":"single-platform.js","sources":[$repeat],"sourcesContent":[null],"names":[],"mappings":""}""",
             filter.readText()
         )
-        assertEquals("Too many sources or format is not unsupported", filter.warning)
+        assertEquals("Too many sources or format is not supported", filter.warning)
     }
 
 
