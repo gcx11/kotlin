@@ -138,7 +138,7 @@ open class RewriteSourceMapFilterReader(
   }
 
   private fun transformString(value: String): String =
-    File(srcSourceRoot).resolve(value).relativeToOrSelf(File(targetSourceRoot)).path
+    File(srcSourceRoot).resolve(value).canonicalFile.relativeToOrSelf(File(targetSourceRoot)).path
 
   override fun read(): Int {
     maybeReadFirst()
