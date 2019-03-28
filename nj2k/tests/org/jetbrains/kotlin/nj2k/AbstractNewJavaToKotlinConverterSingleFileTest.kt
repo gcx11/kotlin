@@ -21,7 +21,11 @@ import org.jetbrains.kotlin.idea.j2k.IdeaJavaToKotlinServices
 import org.jetbrains.kotlin.j2k.AbstractJavaToKotlinConverterSingleFileTest
 import org.jetbrains.kotlin.j2k.ConverterSettings
 import org.jetbrains.kotlin.test.KotlinTestUtils
+import org.junit.AfterClass
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.test.AfterTest
 
 abstract class AbstractNewJavaToKotlinConverterSingleFileTest : AbstractJavaToKotlinConverterSingleFileTest() {
     override fun compareResults(expectedFile: File, actual: String) {
@@ -29,6 +33,27 @@ abstract class AbstractNewJavaToKotlinConverterSingleFileTest : AbstractJavaToKo
             val file = createKotlinFile(it)
             file.dumpStructureText()
         }
+    }
+
+    override fun doTest(javaPath: String) {
+        val testName = Thread.currentThread().stackTrace[5].let { "${it.className}.${it.methodName}" }
+        try {
+            super.doTest(javaPath)
+        } catch (e: Throwable) {
+            failedTests += testName
+            writeTestData()
+            throw e
+        }
+    }
+
+    private fun writeTestData() {
+        File("/home/ilya/testResults.txt").apply {
+            writeText(failedTests.joinToString("\n"))
+        }
+    }
+
+    companion object {
+        val failedTests = mutableListOf<String>()
     }
 
     override fun fileToKotlin(text: String, settings: ConverterSettings, project: Project): String {
