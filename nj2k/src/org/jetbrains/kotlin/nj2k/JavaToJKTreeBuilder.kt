@@ -69,18 +69,24 @@ class JavaToJKTreeBuilder constructor(
     private fun PsiJavaFile.toJK(): JKFile =
         JKFileImpl(
             packageStatement?.toJK() ?: JKPackageDeclarationImpl(JKNameIdentifierImpl("")),
-            importList?.toJK().orEmpty(),
+            importList.toJK(filterOutUsedImports = true),
             with(declarationMapper) { classes.map { it.toJK() } }
         )
 
-    private fun PsiImportList.toJK(): List<JKImportStatement> =
-        importStatements.filter { import ->
-            when {
-                import.isSingleUnusedImport() -> true
-                import.isOnDemand -> true
-                else -> false
-            }
-        }.map { it.toJK() }
+    private fun PsiImportList?.toJK(filterOutUsedImports: Boolean): JKImportList =
+        JKImportListImpl(
+            this?.importStatements?.let { imports ->
+                if (filterOutUsedImports) {
+                    imports.filter { import ->
+                        when {
+                            import.isSingleUnusedImport() -> true
+                            import.isOnDemand -> true
+                            else -> false
+                        }
+                    }
+                } else imports.toList()
+            }?.map { it.toJK() }.orEmpty()
+        )
 
 
     private fun PsiImportStatement.isSingleUnusedImport(): Boolean {
