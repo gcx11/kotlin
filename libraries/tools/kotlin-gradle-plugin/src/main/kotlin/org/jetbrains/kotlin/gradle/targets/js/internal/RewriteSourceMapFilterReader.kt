@@ -23,7 +23,7 @@ open class RewriteSourceMapFilterReader(
   // All rest contents will be passed directly from [input].
 
   companion object {
-    private const val PROLOG_END = "],\"sourcesContent\":"
+    internal const val PROLOG_END = "],\"sourcesContent\":"
     const val UNSUPPORTED_FORMAT_MESSAGE = "Unsupported format. Contents should starts with `{\"version\":3,\"file\":\"...\",\"sources\":[...],\"sourcesContent\":...`"
 
     private val log = LoggerFactory.getLogger("kotlin")
@@ -57,32 +57,30 @@ open class RewriteSourceMapFilterReader(
     val jsonString = StringBuilder()
     val readBuffer = CharArray(1024)
     var lastRead: Int
-    var surplusPos: Int
+    var jsonPrologPos: Int
     while (true) {
       lastRead = input.read(readBuffer)
       if (lastRead == -1) {
         inputEof = true
-        writeBackUnsupported(jsonString.toString(), "$UNSUPPORTED_FORMAT_MESSAGE. \"sourcesContent\" or \"sources\" not found")
+        writeBackUnsupported(jsonString, "$UNSUPPORTED_FORMAT_MESSAGE. \"sourcesContent\" or \"sources\" not found")
         return
       }
 
-      surplusPos = String(readBuffer, 0, lastRead).indexOf(PROLOG_END)
-      if (surplusPos == -1) {
-        jsonString.append(readBuffer, 0, lastRead)
+      // Try find PROLOG_END. Note the case when prolog contents is splitted between reads.
+      // Like, one buffer ends with `],"sourc`, and the other starts with `esContent"`
+      val prevEnd = jsonString.length
+      jsonString.append(readBuffer, 0, lastRead)
+      jsonPrologPos = jsonString.indexOf(PROLOG_END, prevEnd - PROLOG_END.length)
+      if (jsonPrologPos == -1) {
         if (jsonString.length + lastRead > prologLimit) {
-          writeBackUnsupported(jsonString.toString(), "Too many sources or format is not supported")
+          writeBackUnsupported(jsonString, "Too many sources or format is not supported")
           return
         }
-      } else {
-        jsonString.append(readBuffer, 0, surplusPos)
-        jsonString.append("]}")
-        break
-      }
+      } else break
     }
 
     // create StringWriter to write transformed prolog and contents that was read after PROLOG_END
-    val surplusLength = lastRead - surplusPos
-    bufferWriter = StringWriter(jsonString.length + surplusLength)
+    bufferWriter = StringWriter(jsonString.length)
     bufferJsonWriter = JsonWriter(bufferWriter)
 
     // parse json in prolog and write it back to bufferJsonWriter with transformed source paths
@@ -91,7 +89,9 @@ open class RewriteSourceMapFilterReader(
       json.beginObject()
       bufferJsonWriter.beginObject()
 
-      while (json.peek() != JsonToken.END_OBJECT) {
+      reading@ while (true) {
+        val token = json.peek()
+        check(token == JsonToken.NAME) { "JSON key expected, but $token found" }
         val key = json.nextName()
         when (key) {
           "sources" -> {
@@ -105,27 +105,30 @@ open class RewriteSourceMapFilterReader(
           }
           "version" -> bufferJsonWriter.name(key).value(json.nextInt())
           "file" -> bufferJsonWriter.name(key).value(json.nextString())
+          "sourcesContent" -> break@reading
           else -> throw IllegalStateException("Unknown key \"$key\"")
         }
       }
 
       // leave bufferJsonWriter unclosed
-    } catch (e: IllegalStateException) {
-      writeBackUnsupported(
-        jsonString.substring(0, jsonString.length - "]}".length),
-        "$UNSUPPORTED_FORMAT_MESSAGE. JSON: `$jsonString`. ${e.message}"
-      )
-    } catch (e: MalformedJsonException) {
-      writeBackUnsupported(
-        jsonString.substring(0, jsonString.length - "]}".length),
-        "$UNSUPPORTED_FORMAT_MESSAGE. Malformed JSON ${json.toString().replace("JsonReader ", "")} in `$jsonString`"
-      )
-    }
 
-    // push back contents that was read after PROLOG_END
-    val surplus = String(readBuffer, surplusPos, surplusLength)
-    bufferWriter.append(surplus)
+      // push back contents that was read after PROLOG_END
+      bufferWriter.append(jsonString.substring(jsonPrologPos))
+    } catch (e: IllegalStateException) {
+      writeBackUnsupported(jsonString, json, e.message!!)
+    } catch (e: MalformedJsonException) {
+      writeBackUnsupported(jsonString, json, "Malformed JSON")
+    }
   }
+
+  private fun writeBackUnsupported(jsonString: StringBuilder, reader: JsonReader, message: String) =
+    writeBackUnsupported(
+        jsonString,
+"$UNSUPPORTED_FORMAT_MESSAGE. $message at ${reader.toString().replace("JsonReader at ", "")} in `$jsonString"
+    )
+
+  private fun writeBackUnsupported(jsonString: StringBuilder, reason: String) =
+    writeBackUnsupported(jsonString.toString(), reason)
 
   private fun writeBackUnsupported(jsonString: String, reason: String) {
     warnUnsupported(reason)
