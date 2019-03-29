@@ -1,5 +1,5 @@
 FILE: arrayAccess.kt
-    public? final? val p: <implicit> = Int(0)
+    public? final? static val p: <implicit> = Int(0)
         public? get(): <implicit>
     public? final? fun foo(): <implicit> {
         ^foo Int(1)

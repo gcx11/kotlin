@@ -1,5 +1,5 @@
 FILE: functionX.kt
-    public final val x: R|kotlin/jvm/functions/Function0<kotlin/Int>| = fun R|kotlin/jvm/functions/Function0<kotlin/Int>|.<anonymous>(): R|kotlin/jvm/functions/Function0<kotlin/Int>| {
+    public final static val x: R|kotlin/jvm/functions/Function0<kotlin/Int>| = fun R|kotlin/jvm/functions/Function0<kotlin/Int>|.<anonymous>(): R|kotlin/jvm/functions/Function0<kotlin/Int>| {
         ^  {
             Int(42)
         }
@@ -7,7 +7,7 @@ FILE: functionX.kt
     }
 
         public get(): R|kotlin/jvm/functions/Function0<kotlin/Int>|
-    public final val y: R|kotlin/Function1<kotlin/String, kotlin/String>| = fun R|kotlin/Function1<kotlin/String, kotlin/String>|.<anonymous>(): R|kotlin/Function1<kotlin/String, kotlin/String>| {
+    public final static val y: R|kotlin/Function1<kotlin/String, kotlin/String>| = fun R|kotlin/Function1<kotlin/String, kotlin/String>|.<anonymous>(): R|kotlin/Function1<kotlin/String, kotlin/String>| {
         ^  {
             <Unresolved name: it>#
         }

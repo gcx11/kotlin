@@ -770,6 +770,7 @@ class RawFirBuilder(val session: FirSession, val stubMode: Boolean) {
                         { property.delegate?.expression }.toFirExpression("Should have delegate")
                     } else null
                 ).apply {
+                    status.isStatic = property.isTopLevel
                     property.extractTypeParametersTo(this)
                 }
             }

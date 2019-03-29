@@ -4,7 +4,7 @@ FILE: expectActual.kt
 
     }
     public? final? expect fun foo(): String
-    public? final? expect val x: Int
+    public? final? expect static val x: Int
         public? get(): Int
     public? final? actual class MyClass : kotlin/Any {
         public? constructor(): super<kotlin/Any>()
@@ -13,5 +13,5 @@ FILE: expectActual.kt
     public? final? actual fun foo(): <implicit> {
         ^foo String(Hello)
     }
-    public? final? actual val x: <implicit> = Int(42)
+    public? final? actual static val x: <implicit> = Int(42)
         public? get(): <implicit>

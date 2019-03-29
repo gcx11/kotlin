@@ -2,9 +2,9 @@ FILE: simple.kt
     public final fun foo(): R|kotlin/Unit| {
         lval x: R|kotlin/Int| = Int(1)
     }
-    public final val bar: R|kotlin/String| = String()
+    public final static val bar: R|kotlin/String| = String()
         public get(): R|kotlin/String|
-    public final val n: R|kotlin/Nothing|? = Null(null)
+    public final static val n: R|kotlin/Nothing|? = Null(null)
         public get(): R|kotlin/Nothing|?
-    public final val g: R|kotlin/String|? = Null(null)
+    public final static val g: R|kotlin/String|? = Null(null)
         public get(): R|kotlin/String|?
