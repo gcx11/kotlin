@@ -46,6 +46,7 @@ import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.impl.IrErrorTypeImpl
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -742,10 +743,15 @@ class Fir2IrVisitor(
 
     override fun visitWhenExpression(whenExpression: FirWhenExpression, data: Any?): IrElement {
         val subjectVariable = generateWhenSubjectVariable(whenExpression)
-        val origin = when (whenExpression.psi) {
+        val origin = when (val psi = whenExpression.psi) {
             is KtWhenExpression -> IrStatementOrigin.WHEN
             is KtIfExpression -> IrStatementOrigin.IF
-            is KtBinaryExpression -> IrStatementOrigin.ELVIS
+            is KtBinaryExpression -> when (psi.operationToken) {
+                KtTokens.ELVIS -> IrStatementOrigin.ELVIS
+                KtTokens.OROR -> IrStatementOrigin.OROR
+                KtTokens.ANDAND -> IrStatementOrigin.ANDAND
+                else -> null
+            }
             is KtUnaryExpression -> IrStatementOrigin.EXCLEXCL
             else -> null
         }
@@ -845,8 +851,6 @@ class Fir2IrVisitor(
                 FirOperation.GT -> TODO()
                 FirOperation.LT_EQ -> TODO()
                 FirOperation.GT_EQ -> TODO()
-                FirOperation.AND -> TODO()
-                FirOperation.OR -> TODO()
                 FirOperation.IN -> TODO()
                 FirOperation.NOT_IN -> TODO()
                 FirOperation.ASSIGN -> TODO()
