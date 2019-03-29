@@ -35,27 +35,6 @@ abstract class AbstractNewJavaToKotlinConverterSingleFileTest : AbstractJavaToKo
         }
     }
 
-    override fun doTest(javaPath: String) {
-        val testName = Thread.currentThread().stackTrace[5].let { "${it.className}.${it.methodName}" }
-        try {
-            super.doTest(javaPath)
-        } catch (e: Throwable) {
-            failedTests += testName
-            writeTestData()
-            throw e
-        }
-    }
-
-    private fun writeTestData() {
-        File("/home/ilya/testResults.txt").apply {
-            writeText(failedTests.joinToString("\n"))
-        }
-    }
-
-    companion object {
-        val failedTests = mutableListOf<String>()
-    }
-
     override fun fileToKotlin(text: String, settings: ConverterSettings, project: Project): String {
         val file = createJavaFile(text)
         return NewJavaToKotlinConverter(project, settings, IdeaJavaToKotlinServices)
