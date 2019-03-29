@@ -67,16 +67,16 @@ tasks {
     getByName("clean").dependsOn("cleanYarn")
 }
 
-val zip = tasks.create<Zip>("zip") {
+val jar = tasks.create<Jar>("jar") {
     from(projectDir.resolve("lib"))
 }
 
 artifacts {
     add(
         "archives",
-        zip.archiveFile.get().asFile
+        jar.archiveFile.get().asFile
     ) {
-        builtBy(zip)
+        builtBy(jar)
     }
 }
 
