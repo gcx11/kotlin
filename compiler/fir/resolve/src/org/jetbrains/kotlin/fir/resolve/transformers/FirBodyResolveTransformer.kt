@@ -310,9 +310,11 @@ open class FirBodyResolveTransformer(val session: FirSession, val implicitTypeOn
     override fun <T> transformConstExpression(constExpression: FirConstExpression<T>, data: Any?): CompositeTransformResult<FirStatement> {
         val expectedType = data as? FirTypeRef
 
-        if (expectedType is FirImplicitTypeRef || expectedType == null) {
-
-            val symbol = when (constExpression.kind) {
+        val kind = constExpression.kind
+        if (expectedType is FirImplicitTypeRef || expectedType == null ||
+            kind == IrConstKind.Null || kind == IrConstKind.Boolean || kind == IrConstKind.Char
+        ) {
+            val symbol = when (kind) {
                 IrConstKind.Null -> StandardClassIds.Nothing(symbolProvider)
                 IrConstKind.Boolean -> StandardClassIds.Boolean(symbolProvider)
                 IrConstKind.Char -> StandardClassIds.Char(symbolProvider)
@@ -325,7 +327,7 @@ open class FirBodyResolveTransformer(val session: FirSession, val implicitTypeOn
                 IrConstKind.Double -> StandardClassIds.Double(symbolProvider)
             }
 
-            val type = ConeClassTypeImpl(symbol.toLookupTag(), emptyArray(), isNullable = constExpression.kind == IrConstKind.Null)
+            val type = ConeClassTypeImpl(symbol.toLookupTag(), emptyArray(), isNullable = kind == IrConstKind.Null)
 
             constExpression.resultType = FirResolvedTypeRefImpl(session, null, type, false, emptyList())
         } else {
