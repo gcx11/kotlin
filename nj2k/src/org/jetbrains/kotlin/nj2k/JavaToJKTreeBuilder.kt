@@ -953,7 +953,7 @@ class JavaToJKTreeBuilder constructor(
         }.last()
 
 
-    fun buildTree(psi: PsiElement): JKTreeElement? =
+    fun buildTree(psi: PsiElement): JKTreeRoot? =
         when (psi) {
             is PsiJavaFile -> psi.toJK()
             is PsiExpression -> with(expressionTreeMapper) { psi.toJK() }
@@ -962,9 +962,16 @@ class JavaToJKTreeBuilder constructor(
             is PsiField -> with(declarationMapper) { psi.toJK() }
             is PsiMethod -> with(declarationMapper) { psi.toJK() }
             is PsiAnnotation -> with(declarationMapper) { psi.toJK() }
-            else ->
-                null
-        }
+            is PsiImportList -> psi.toJK(filterOutUsedImports = false)
+            is PsiImportStatement -> psi.toJK()
+            is PsiJavaCodeReferenceElement ->
+                if (psi.parent is PsiReferenceList) {
+                    val factory = JavaPsiFacade.getInstance(psi.project).elementFactory
+                    val type = factory.createType(psi)
+                    JKTypeElementImpl(type.toJK(symbolProvider).updateNullabilityRecursively(Nullability.NotNull))
+                } else null
+            else -> null
+        }?.let { JKTreeRootImpl(it) }
 
     private val tokenCache = mutableMapOf<PsiElement, JKNonCodeElement>()
 
