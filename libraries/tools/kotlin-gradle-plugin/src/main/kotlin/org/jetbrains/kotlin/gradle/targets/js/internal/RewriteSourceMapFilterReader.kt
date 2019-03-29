@@ -54,7 +54,6 @@ open class RewriteSourceMapFilterReader(
 
     private fun readFirst() {
         // read 1Kb chunks from [input] until [PROLOG_END] will be found
-        // surplus contents will be at [readBuffer]: [surplusPos]..(1Kb-[lastRead])
         val jsonString = StringBuilder()
         val readBuffer = CharArray(1024)
         var lastRead: Int
